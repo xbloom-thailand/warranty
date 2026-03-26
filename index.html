@@ -810,32 +810,32 @@ function sendToSheets(entry) {
   const expiryDt = new Date(purchaseDt);
   expiryDt.setFullYear(expiryDt.getFullYear() + 2);
 
-  // Use FormData + no-cors to bypass CORS restriction
-  const form = new FormData();
-  form.append('id',           entry.id);
-  form.append('registeredAt', entry.registeredAt);
-  form.append('serial',       entry.serial);
-  form.append('product',      entry.product);
-  form.append('company',      entry.company);
-  form.append('purchaseDate', fmtDate(entry.purchaseDate));
-  form.append('expiryDate',   fmtDate(expiryDt.toISOString().slice(0,10)));
-  form.append('name',         entry.name);
-  form.append('phone',        entry.phone);
-  form.append('email',        entry.email);
-  form.append('postal',       entry.postal);
-  form.append('houseNo',      entry.houseNo);
-  form.append('building',     entry.building || '');
-  form.append('subdistrict',  entry.subdistrict);
-  form.append('district',     entry.district);
-  form.append('province',     entry.province);
-  form.append('address',      entry.address);
-  form.append('receiptName',  entry.receiptName || '');
-  form.append('status',       entry.status);
+  // Use URL params via GET — most reliable with no-cors
+  const params = new URLSearchParams({
+    id:           entry.id,
+    registeredAt: entry.registeredAt,
+    serial:       entry.serial,
+    product:      entry.product,
+    company:      entry.company,
+    purchaseDate: fmtDate(entry.purchaseDate),
+    expiryDate:   fmtDate(expiryDt.toISOString().slice(0,10)),
+    name:         entry.name,
+    phone:        entry.phone,
+    email:        entry.email,
+    postal:       entry.postal,
+    houseNo:      entry.houseNo,
+    building:     entry.building || '',
+    subdistrict:  entry.subdistrict,
+    district:     entry.district,
+    province:     entry.province,
+    address:      entry.address,
+    receiptName:  entry.receiptName || '',
+    status:       entry.status
+  });
 
-  fetch(SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: form
+  fetch(SHEETS_URL + '?' + params.toString(), {
+    method: 'GET',
+    mode: 'no-cors'
   }).catch(err => console.warn('Sheets sync failed:', err));
 }
 
