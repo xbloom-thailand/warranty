@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>xBloom | ลงทะเบียนรับประกัน</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f2; --card: #ffffff; --text: #111111; --muted: #888888;
+  --border: #e0ddd8; --accent: #1a1a1a; --green: #2d9966; --red: #e03e3e;
+  --input-bg: #fafaf8; --shadow: 0 2px 24px rgba(0,0,0,0.07);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px 64px; }
+
+.header { width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: space-between; padding: 24px 0 18px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-logo { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: 0.04em; color: var(--text); }
+.header-divider { width: 1px; height: 14px; background: var(--border); }
+.header-region { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+.admin-btn { font-size: 11px; color: var(--muted); padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .2s; background: none; font-family: 'DM Sans', sans-serif; }
+.admin-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.card { width: 100%; max-width: 420px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 28px 24px 32px; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+.progress { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 24px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: all .3s; }
+.dot.active { background: var(--accent); width: 20px; border-radius: 4px; }
+.dot.done { background: var(--green); }
+
+.section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 20px; line-height: 1.3; }
+.sub-title { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 10px; }
+
+.field { margin-bottom: 12px; }
+.field label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.req { color: var(--red); font-size: 10px; }
+.field input, .field select, .field textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--input-bg); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color .2s, box-shadow .2s; appearance: none; -webkit-appearance: none; }
+.field input::placeholder, .field textarea::placeholder { color: #c0bcb5; }
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
+.field input.error, .field select.error { border-color: var(--red) !important; }
+.error-msg { font-size: 11px; color: var(--red); margin-top: 4px; display: none; }
+.error-msg.show { display: block; }
+
+.date-wrap { position: relative; }
+.date-wrap input { padding-right: 40px; cursor: pointer; }
+.cal-icon { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.upload-area { border: 1.5px dashed var(--border); border-radius: 10px; padding: 16px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: border-color .2s, background .2s; background: var(--input-bg); }
+.upload-area:hover { border-color: var(--accent); background: #f0ede8; }
+.upload-area.has-file { border-color: var(--green); border-style: solid; }
+.upload-icon { font-size: 20px; }
+.upload-text { font-size: 13px; color: var(--muted); }
+.upload-area.has-file .upload-text { color: var(--green); font-weight: 500; }
+.file-hidden { display: none; }
+
+.select-wrap { position: relative; }
+.select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+.select-wrap select { cursor: pointer; }
+.dd-wrap { position: relative; }
+.dropdown-list { position: absolute; z-index: 10; width: 100%; border: 1.5px solid var(--border); border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.10); overflow: hidden; margin-top: 4px; display: none; max-height: 200px; overflow-y: auto; }
+.dropdown-list.open { display: block; }
+.dropdown-item { padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; border-bottom: 1px solid var(--border); transition: background .15s; }
+.dropdown-item:last-child { border-bottom: none; }
+.dropdown-item:hover { background: var(--bg); }
+
+.btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; margin-top: 20px; transition: background .2s, transform .1s; }
+.btn-primary:hover { background: #333; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--muted); border: 1.5px solid var(--border); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; margin-top: 10px; transition: all .2s; }
+.btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+
+.step { display: none; }
+.step.active { display: block; animation: fadeUp 0.35s ease both; }
+
+/* Success */
+.success-screen { text-align: center; padding: 8px 0; }
+@keyframes popIn { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.success-icon-wrap { width: 80px; height: 80px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+.success-icon-wrap svg { width: 38px; height: 38px; stroke: #fff; }
+.success-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.success-sub { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+.warranty-card-preview { background: var(--accent); border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 16px; }
+.wc-brand { font-family: 'Playfair Display', serif; color: #fff; font-size: 16px; font-weight: 600; }
+.wc-sub { color: rgba(255,255,255,0.45); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+.wc-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 10px 0; }
+.wc-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+.wc-row .k { color: rgba(255,255,255,0.45); }
+.wc-row .v { color: #fff; font-weight: 500; max-width: 65%; text-align: right; word-break: break-all; }
+.wc-footer { color: rgba(255,255,255,0.3); font-size: 10px; margin-top: 12px; letter-spacing: 0.06em; }
+
+/* Admin */
+.admin-panel { width: 100%; max-width: 960px; display: none; }
+.admin-panel.open { display: block; animation: fadeUp .3s ease both; }
+.admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.admin-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--text); }
+.admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.export-btn { padding: 9px 16px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text); transition: all .2s; }
+.export-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.export-btn.danger:hover { background: var(--red); border-color: var(--red); }
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--card); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
+.stat-num { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 600; color: var(--text); }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px; }
+.table-wrap { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; border-bottom: 1px solid var(--border); }
+tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #fafaf8; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.badge-green { background: #e8f5ef; color: var(--green); }
+.del-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 4px 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; white-space: nowrap; }
+.del-btn:hover { background: #fff0f0; border-color: var(--red); color: var(--red); }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 14px; }
+.back-link { font-size: 13px; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+.back-link:hover { color: var(--text); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 16px; padding: 28px 24px; width: 320px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal h3 { font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 8px; }
+.modal p { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+.modal input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; margin-bottom: 10px; }
+.modal input:focus { border-color: var(--accent); }
+.modal-error { font-size: 12px; color: var(--red); margin-bottom: 10px; display: none; }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btns button { flex: 1; padding: 11px; border-radius: 10px; border: none; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; }
+.modal-confirm { background: var(--accent); color: #fff; }
+.modal-cancel { background: var(--bg); color: var(--muted); }
+
+/* ── Tabs ── */
+.tab-nav { width: 100%; max-width: 420px; display: flex; background: var(--card); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.tab-btn { flex: 1; padding: 10px 8px; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--muted); border-radius: 10px; cursor: pointer; transition: all .2s; }
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-btn:not(.active):hover { color: var(--text); background: var(--bg); }
+
+/* ── Checker Card ── */
+.checker-card { width: 100%; max-width: 420px; display: none; }
+.checker-card.open { display: block; animation: fadeUp .35s ease both; }
+.check-input-row { display: flex; gap: 8px; margin-bottom: 20px; }
+.check-input-row input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--input-bg); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color .2s; }
+.check-input-row input:focus { border-color: var(--accent); }
+.check-input-row button { padding: 11px 18px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background .2s; }
+.check-input-row button:hover { background: #333; }
+
+.warranty-result { display: none; }
+.warranty-result.show { display: block; animation: fadeUp .3s ease both; }
+
+.status-banner { border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 16px; }
+.status-banner.valid { background: linear-gradient(135deg, #1d7a50 0%, #2d9966 100%); }
+.status-banner.expired { background: linear-gradient(135deg, #b83232 0%, #e03e3e 100%); }
+.status-banner.soon { background: linear-gradient(135deg, #b87a00 0%, #e09a00 100%); }
+.status-icon { font-size: 36px; margin-bottom: 8px; }
+.status-title { color: #fff; font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.status-sub { color: rgba(255,255,255,0.75); font-size: 13px; }
+
+.progress-bar-wrap { background: var(--bg); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+.progress-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.progress-bar-track { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+.fill-green { background: var(--green); }
+.fill-orange { background: #e09a00; }
+.fill-red { background: var(--red); }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.detail-box { background: var(--bg); border-radius: 12px; padding: 14px; }
+.detail-box .dk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+.detail-box .dv { font-size: 14px; font-weight: 600; color: var(--text); }
+.detail-box.full { grid-column: 1 / -1; }
+
+.not-found { background: var(--bg); border-radius: 14px; padding: 28px 20px; text-align: center; display: none; }
+.not-found.show { display: block; animation: fadeUp .3s ease both; }
+.not-found-icon { font-size: 32px; margin-bottom: 10px; }
+.not-found p { font-size: 14px; color: var(--muted); }
+
+
+/* ── Receipt Modal ── */
+.receipt-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+.receipt-modal-overlay.open { display: flex; }
+.receipt-modal-box { background: #fff; border-radius: 16px; width: 100%; max-width: 540px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,0.3); overflow: hidden; }
+.receipt-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.receipt-modal-header span { font-size: 14px; font-weight: 600; color: var(--text); }
+.receipt-modal-close { background: var(--bg); border: none; border-radius: 8px; width: 30px; height: 30px; font-size: 14px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.receipt-modal-close:hover { background: #e0ddd8; color: var(--text); }
+.receipt-modal-body { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #f0ede8; min-height: 200px; }
+.receipt-modal-body img { max-width: 100%; max-height: 60vh; object-fit: contain; display: block; }
+.receipt-modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+.view-receipt-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text); font-family: 'DM Sans', sans-serif; transition: all .15s; white-space: nowrap; }
+.view-receipt-btn:hover { background: var(--bg); border-color: var(--accent); }
+
+/* ── Admin Search ── */
+.search-bar-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.search-bar-wrap input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; background: var(--card); transition: border-color .2s; }
+.search-bar-wrap input:focus { border-color: var(--accent); }
+/* ── Edit button ── */
+.edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 4px 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; white-space: nowrap; }
+.edit-btn:hover { background: #f0f4ff; border-color: #4a7aff; color: #4a7aff; }
+tr.highlight td { background: #fffbea !important; }
+
+/* ── Admin Search ── */
+.admin-search-wrap { margin-bottom: 16px; }
+.admin-search-wrap input { width: 100%; padding: 11px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); background: var(--card); outline: none; transition: border-color .2s, box-shadow .2s; box-shadow: var(--shadow); }
+.admin-search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
+.edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 4px 8px; font-size: 13px; cursor: pointer; color: var(--muted); transition: all .15s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+.edit-btn:hover { background: #f0f4ff; border-color: #6b8cff; color: #3355cc; }
+.highlight { background: #fff9c4; border-radius: 3px; padding: 0 2px; }
+
+/* ── Product Manager ── */
+.product-manager { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; animation: fadeUp .25s ease both; }
+.pm-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.pm-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.pm-body { padding: 16px 18px; }
+.pm-product-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 9px; background: var(--bg); margin-bottom: 7px; font-size: 13px; color: var(--text); gap: 10px; }
+.pm-product-row:last-child { margin-bottom: 0; }
+.pm-product-name { flex: 1; }
+.pm-product-row .del-btn { margin: 0; padding: 3px 8px; font-size: 12px; }
+.pm-add-row { display: flex; gap: 8px; margin-top: 12px; }
+.pm-add-row input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; background: var(--input-bg); }
+.pm-add-row input:focus { border-color: var(--accent); }
+.pm-add-btn { padding: 9px 16px; background: var(--accent); color: #fff; border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background .2s; }
+.pm-add-btn:hover { background: #333; }
+</style>
+</head>
+<body>
+
+<!-- Password Modal -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal">
+    <h3>🔒 Admin Access</h3>
+    <p>กรุณาใส่รหัสผ่านเพื่อเข้าถึงข้อมูล</p>
+    <input type="password" id="pwInput" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')checkPw()" />
+    <div class="modal-error" id="pwErr">รหัสผ่านไม่ถูกต้อง</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="modal-confirm" onclick="checkPw()">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header" id="mainHeader">
+  <div class="header-left">
+    <span class="header-logo">xbloom</span>
+    <div class="header-divider"></div>
+    <span class="header-region">Thailand</span>
+  </div>
+  <button class="admin-btn" onclick="openAdmin()">⚙ Admin</button>
+</div>
+
+
+<!-- Tab Nav -->
+<div class="tab-nav" id="tabNav">
+  <button class="tab-btn active" id="tab_register" onclick="switchTab('register')">ลงทะเบียนประกัน</button>
+  <button class="tab-btn" id="tab_check" onclick="switchTab('check')">ตรวจสอบประกัน</button>
+</div>
+
+<!-- ═══ CHECKER CARD ═══ -->
+<div class="card checker-card" id="checkerCard">
+  <div class="section-title">ตรวจสอบระยะประกัน</div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.65">กรอกหมายเลขซีเรียล (S/N) ของเครื่อง เพื่อตรวจสอบสถานะและระยะเวลาประกันคงเหลือ</p>
+  <div class="check-input-row">
+    <input type="text" id="check_serial" placeholder="หมายเลขซีเรียล S/N" onkeydown="if(event.key==='Enter')checkWarranty()" />
+    <button onclick="checkWarranty()">ตรวจสอบ</button>
+  </div>
+
+  <!-- Result -->
+  <div class="warranty-result" id="warrantyResult">
+    <div class="status-banner" id="statusBanner">
+      <div class="status-icon" id="statusIcon">✅</div>
+      <div class="status-title" id="statusTitle">อยู่ในระยะประกัน</div>
+      <div class="status-sub" id="statusSub">เหลือ 520 วัน</div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-label">
+        <span id="barStart">—</span>
+        <span id="barPct">—</span>
+        <span id="barEnd">—</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="barFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-box">
+        <div class="dk">สินค้า</div>
+        <div class="dv" id="res_product" style="font-size:12px">—</div>
+      </div>
+      <div class="detail-box">
+        <div class="dk">ชื่อลูกค้า</div>
+        <div class="dv" id="res_name">—</div>
+      </div>
+      <div class="detail-box">
+        <div class="dk">วันที่ซื้อ</div>
+        <div class="dv" id="res_purchaseDate">—</div>
+      </div>
+      <div class="detail-box">
+        <div class="dk">วันหมดประกัน</div>
+        <div class="dv" id="res_expiryDate">—</div>
+      </div>
+      <div class="detail-box full">
+        <div class="dk">เหลือเวลาประกัน</div>
+        <div class="dv" id="res_remaining" style="font-size:16px">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not Found -->
+  <div class="not-found" id="notFound">
+    <div class="not-found-icon">🔍</div>
+    <p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>
+  </div>
+</div>
+
+<!-- ═══ FORM CARD ═══ -->
+<div class="card" id="formCard">
+  <div class="progress">
+    <div class="dot active" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+
+  <!-- STEP 1: Product info -->
+  <div class="step active" id="step1">
+    <div class="section-title">ลงทะเบียนการรับประกัน</div>
+
+    <div class="field">
+      <label>หมายเลขซีเรียล S/N <span class="req">*</span></label>
+      <input type="text" id="f_serial" placeholder="เช่น J15N012321312321312" />
+      <div class="error-msg" id="e_serial">กรุณากรอกหมายเลข S/N</div>
+    </div>
+
+    <div class="sub-title">รายละเอียดสินค้า</div>
+
+    <div class="field">
+      <label>ชื่อสินค้า <span class="req">*</span></label>
+      <div class="select-wrap">
+        <select id="f_product"></select>
+      </div>
+      <div class="error-msg" id="e_product">กรุณาเลือกชื่อสินค้า</div>
+    </div>
+
+    <div class="field">
+      <label>บริษัทที่สั่งซื้อ <span class="req">*</span></label>
+      <input type="text" id="f_company" value="xBloom Thailand" />
+      <div class="error-msg" id="e_company">กรุณากรอกชื่อบริษัท</div>
+    </div>
+
+    <div class="field">
+      <label>วันที่สั่งซื้อ <span class="req">*</span></label>
+      <div class="date-wrap">
+        <input type="date" id="f_purchasedate" />
+        <span class="cal-icon">📅</span>
+      </div>
+      <div class="error-msg" id="e_purchasedate">กรุณาเลือกวันที่สั่งซื้อ</div>
+    </div>
+
+    <button class="btn-primary" onclick="validateStep1()">ถัดไป →</button>
+  </div>
+
+  <!-- STEP 2: Customer info -->
+  <div class="step" id="step2">
+    <div class="section-title">ข้อมูลลูกค้า</div>
+
+    <div class="field">
+      <label>ชื่อ-นามสกุล <span class="req">*</span></label>
+      <input type="text" id="f_name" placeholder="ชื่อ-นามสกุล" />
+      <div class="error-msg" id="e_name">กรุณากรอกชื่อ-นามสกุล</div>
+    </div>
+
+    <div class="field">
+      <label>เบอร์โทรศัพท์ <span class="req">*</span></label>
+      <input type="tel" id="f_phone" placeholder="เช่น 089-323-3232" />
+      <div class="error-msg" id="e_phone">กรุณากรอกเบอร์โทรศัพท์</div>
+    </div>
+
+    <div class="field">
+      <label>อีเมล <span class="req">*</span></label>
+      <input type="email" id="f_email" placeholder="example@email.com" />
+      <div class="error-msg" id="e_email">กรุณากรอกอีเมลให้ถูกต้อง</div>
+    </div>
+
+    <button class="btn-primary" onclick="validateStep2()">ถัดไป →</button>
+    <button class="btn-secondary" onclick="goStep(1)">← ย้อนกลับ</button>
+  </div>
+
+  <!-- STEP 3: Address -->
+  <div class="step" id="step3">
+    <div class="section-title">ที่อยู่ผู้ลงทะเบียน</div>
+
+    <div class="field">
+      <label>รหัสไปรษณีย์ <span class="req">*</span></label>
+      <div class="dd-wrap">
+        <input type="text" id="f_postal" placeholder="กรอกรหัสไปรษณีย์" oninput="filterPostal(this)" maxlength="5" />
+        <div class="dropdown-list" id="postal-dd"></div>
+      </div>
+      <div class="error-msg" id="e_postal">กรุณากรอกรหัสไปรษณีย์</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>เลขที่ <span class="req">*</span></label>
+        <input type="text" id="f_houseno" placeholder="เลขที่บ้าน" />
+        <div class="error-msg" id="e_houseno">กรุณากรอกเลขที่</div>
+      </div>
+      <div class="field">
+        <label>ตึก / หมู่บ้าน / ซอย</label>
+        <input type="text" id="f_building" placeholder="(ถ้ามี)" />
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>แขวง / ตำบล <span class="req">*</span></label>
+        <input type="text" id="f_subdistrict" placeholder="แขวง/ตำบล" />
+        <div class="error-msg" id="e_subdistrict">กรุณากรอก</div>
+      </div>
+      <div class="field">
+        <label>เขต / อำเภอ <span class="req">*</span></label>
+        <input type="text" id="f_district" placeholder="เขต/อำเภอ" />
+        <div class="error-msg" id="e_district">กรุณากรอก</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>จังหวัด <span class="req">*</span></label>
+      <input type="text" id="f_province" placeholder="จังหวัด" />
+      <div class="error-msg" id="e_province">กรุณากรอกจังหวัด</div>
+    </div>
+
+    <div class="field">
+      <label>แนบรูปภาพใบเสร็จ / สลิป <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">(ไม่บังคับ)</span></label>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📷</span>
+        <span class="upload-text" id="uploadText">แตะเพื่อเลือกรูปภาพ</span>
+      </div>
+      <input type="file" class="file-hidden" id="fileInput" accept="image/*" onchange="handleFile(this)" />
+    </div>
+
+    <button class="btn-primary" onclick="validateStep3()">ลงทะเบียนประกัน ✓</button>
+    <button class="btn-secondary" onclick="goStep(2)">← ย้อนกลับ</button>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="step" id="stepSuccess">
+    <div class="success-screen">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="success-title">ลงทะเบียนเรียบร้อยครับ</div>
+      <div class="success-sub">บันทึกข้อมูลเรียบร้อยแล้ว<br>หากมีปัญหาสามารถติดต่อ <strong>Line: @xbloomthailand</strong></div>
+
+      <div class="warranty-card-preview">
+        <div class="wc-brand">xBloom Studio</div>
+        <div class="wc-sub">Warranty Card · รับประกัน 2 ปี</div>
+        <div class="wc-divider"></div>
+        <div class="wc-row"><span class="k">S/N</span><span class="v" id="wc_serial">—</span></div>
+        <div class="wc-row"><span class="k">สินค้า</span><span class="v" id="wc_product">—</span></div>
+        <div class="wc-row"><span class="k">ลูกค้า</span><span class="v" id="wc_name">—</span></div>
+        <div class="wc-row"><span class="k">อีเมล</span><span class="v" id="wc_email">—</span></div>
+        <div class="wc-divider"></div>
+        <div class="wc-row"><span class="k">วันที่ซื้อ</span><span class="v" id="wc_date">—</span></div>
+        <div class="wc-row" style="align-items:center">
+          <span class="k">หมดประกัน</span>
+          <span class="v" id="wc_expiry" style="color:#7fffc0;font-weight:700">—</span>
+        </div>
+        <div class="wc-footer">xbloom | Thailand &nbsp;·&nbsp; ประกัน 2 ปี นับจากวันที่ซื้อ</div>
+      </div>
+
+      <hr class="divider" />
+      <button class="btn-primary" onclick="resetForm()" style="background:var(--green)">+ ลงทะเบียนใหม่</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN PANEL ═══ -->
+<div class="admin-panel" id="adminPanel">
+  <span class="back-link" onclick="closeAdmin()">← กลับหน้าลงทะเบียน</span>
+  <div class="admin-header">
+    <div class="admin-title">📋 ข้อมูลการลงทะเบียนประกัน</div>
+    <div class="admin-actions">
+      <button class="export-btn" onclick="toggleProductManager()">⚙ จัดการรุ่นสินค้า</button>
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="export-btn" onclick="exportJSON()">⬇ Export JSON</button>
+      <button class="export-btn danger" onclick="clearAll()">🗑 ลบทั้งหมด</button>
+    </div>
+  </div>
+
+  <!-- Product Manager Panel -->
+  <div class="product-manager" id="productManager" style="display:none">
+    <div class="pm-header">
+      <span class="pm-title">⚙ จัดการรุ่นสินค้า</span>
+      <button class="receipt-modal-close" onclick="toggleProductManager()">✕</button>
+    </div>
+    <div class="pm-body">
+      <div id="productList"></div>
+      <div class="pm-add-row">
+        <input type="text" id="newProductInput" placeholder="ชื่อรุ่นสินค้าใหม่ เช่น xBloom Studio Rose Gold" onkeydown="if(event.key==='Enter')addProduct()" />
+        <button class="pm-add-btn" onclick="addProduct()">+ เพิ่ม</button>
+      </div>
+      <div class="error-msg" id="e_newProduct" style="margin-top:6px">กรุณากรอกชื่อสินค้า</div>
+    </div>
+  </div>
+  <div class="admin-search-wrap">
+    <input type="text" id="adminSearch" placeholder="🔍 ค้นหา S/N, ชื่อลูกค้า, สินค้า, อีเมล..." oninput="renderAdmin()" />
+  </div>
+  <div class="admin-stats" id="adminStats"></div>
+  <div class="search-bar-wrap">
+    <input type="text" id="adminSearch" placeholder="🔍 ค้นหาด้วย S/N, ชื่อลูกค้า, อีเมล, สินค้า..." oninput="filterTable(this.value)" />
+    <span id="searchCount" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>วันที่ลง</th><th>S/N</th><th>สินค้า</th><th>บริษัท</th>
+            <th>วันที่ซื้อ</th><th>ชื่อลูกค้า</th><th>โทร</th><th>อีเมล</th>
+            <th>ที่อยู่</th><th>ใบเสร็จ</th><th>สถานะ</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="width:480px;max-width:95vw;max-height:88vh;overflow-y:auto">
+    <h3 style="margin-bottom:16px">✏️ แก้ไขข้อมูล</h3>
+    <input type="hidden" id="edit_id" />
+    <div style="display:grid;gap:10px">
+      <div class="field"><label>S/N <span class="req">*</span></label><input type="text" id="edit_serial" /></div>
+      <div class="field"><label>สินค้า <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="edit_product">
+            <option value="xBloom Studio Midnight Black">xBloom Studio Midnight Black</option>
+            <option value="xBloom Studio Moonlight White">xBloom Studio Moonlight White</option>
+            <option value="xBloom Studio Sage Green (Green Knob)">xBloom Studio Sage Green (Green Knob)</option>
+            <option value="xBloom Studio Sage Green (Gold Knob)">xBloom Studio Sage Green (Gold Knob)</option>
+            <option value="xBloom Studio Twilight">xBloom Studio Twilight</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>บริษัท <span class="req">*</span></label><input type="text" id="edit_company" /></div>
+      <div class="field"><label>วันที่ซื้อ <span class="req">*</span></label><input type="date" id="edit_purchaseDate" /></div>
+      <div class="field"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="edit_name" /></div>
+      <div class="field"><label>เบอร์โทร <span class="req">*</span></label><input type="tel" id="edit_phone" /></div>
+      <div class="field"><label>อีเมล <span class="req">*</span></label><input type="email" id="edit_email" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>เลขที่</label><input type="text" id="edit_houseNo" /></div>
+        <div class="field"><label>ตึก/ซอย</label><input type="text" id="edit_building" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>แขวง/ตำบล</label><input type="text" id="edit_subdistrict" /></div>
+        <div class="field"><label>เขต/อำเภอ</label><input type="text" id="edit_district" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>จังหวัด</label><input type="text" id="edit_province" /></div>
+        <div class="field"><label>รหัสไปรษณีย์</label><input type="text" id="edit_postal" /></div>
+      </div>
+    </div>
+    <div class="modal-btns" style="margin-top:18px">
+      <button class="modal-cancel" onclick="closeEditModal()">ยกเลิก</button>
+      <button class="modal-confirm" onclick="saveEdit()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="width:420px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <h3 style="margin-bottom:16px">✏️ แก้ไขข้อมูล</h3>
+    <input type="hidden" id="edit_id" />
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">S/N</label>
+      <input type="text" id="edit_serial" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">สินค้า</label>
+      <div style="position:relative">
+        <select id="edit_product" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;appearance:none;background:#fafaf8">
+          <option value="xBloom Studio Midnight Black">xBloom Studio Midnight Black</option>
+          <option value="xBloom Studio Moonlight White">xBloom Studio Moonlight White</option>
+          <option value="xBloom Studio Sage Green (Green Knob)">xBloom Studio Sage Green (Green Knob)</option>
+          <option value="xBloom Studio Sage Green (Gold Knob)">xBloom Studio Sage Green (Gold Knob)</option>
+          <option value="xBloom Studio Twilight">xBloom Studio Twilight</option>
+        </select>
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#888;font-size:12px">▾</span>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">บริษัท</label>
+      <input type="text" id="edit_company" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">วันที่ซื้อ</label>
+      <input type="date" id="edit_purchaseDate" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">ชื่อ-นามสกุล</label>
+      <input type="text" id="edit_name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">โทรศัพท์</label>
+      <input type="text" id="edit_phone" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">อีเมล</label>
+      <input type="email" id="edit_email" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">เลขที่</label>
+        <input type="text" id="edit_houseNo" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">ตึก/ซอย</label>
+        <input type="text" id="edit_building" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">แขวง/ตำบล</label>
+        <input type="text" id="edit_subdistrict" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">เขต/อำเภอ</label>
+        <input type="text" id="edit_district" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">จังหวัด</label>
+      <input type="text" id="edit_province" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeEditModal()">ยกเลิก</button>
+      <button class="modal-confirm" onclick="saveEdit()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Image Modal -->
+<div class="receipt-modal-overlay" id="receiptModal" onclick="closeReceiptModal()">
+  <div class="receipt-modal-box" onclick="event.stopPropagation()">
+    <div class="receipt-modal-header">
+      <span id="receiptModalTitle">ใบเสร็จ</span>
+      <button class="receipt-modal-close" onclick="closeReceiptModal()">✕</button>
+    </div>
+    <div class="receipt-modal-body">
+      <img id="receiptModalImg" src="" alt="ใบเสร็จ" />
+    </div>
+    <div class="receipt-modal-footer">
+      <a id="receiptDownloadBtn" download="" href="" class="export-btn" style="text-decoration:none">⬇ ดาวน์โหลด</a>
+    </div>
+  </div>
+</div>
+<script>
+const STORAGE_KEY = 'xbloom_warranties';
+const PRODUCTS_KEY = 'xbloom_products';
+const ADMIN_PW = 'xbloom2025';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwpv3Lgq9iE5mY_aVILIwWDsS4IDwTjZlazKmvrsosTFBIb4shdxyYRr6gtzQTGAZY/exec';
+
+
+
+// ── Product List ──
+const DEFAULT_PRODUCTS = [
+  'xBloom Studio Midnight Black',
+  'xBloom Studio Moonlight White',
+  'xBloom Studio Sage Green (Green Knob)',
+  'xBloom Studio Sage Green (Gold Knob)',
+  'xBloom Studio Twilight',
+];
+function loadProducts() {
+  try { return JSON.parse(localStorage.getItem(PRODUCTS_KEY)) || DEFAULT_PRODUCTS; }
+  catch(e) { return DEFAULT_PRODUCTS; }
+}
+function saveProducts(list) { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list)); }
+function renderProductSelect(selectId, selectedVal) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const products = loadProducts();
+  sel.innerHTML = '<option value="">— เลือกรุ่นสินค้า —</option>' +
+    products.map(p => `<option value="${p}"${p === selectedVal ? ' selected' : ''}>${p}</option>`).join('');
+}
+
+function loadData() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; } }
+function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+let currentStep = 1;
+let uploadedFile = null;
+
+function goStep(n) {
+  document.getElementById('step' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step' + n).classList.add('active');
+  updateDots(n);
+  if (n === 1) renderProductSelect('f_product', '');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateDots(n) {
+  for (let i = 1; i <= 3; i++) {
+    const d = document.getElementById('d' + i);
+    d.className = 'dot';
+    if (i < n) d.classList.add('done');
+    else if (i === n) d.classList.add('active');
+  }
+}
+
+// ── Validation ──
+function v(id) { return document.getElementById(id).value.trim(); }
+function setErr(fid, eid, bad) {
+  document.getElementById(fid).classList.toggle('error', bad);
+  document.getElementById(eid).classList.toggle('show', bad);
+}
+
+function validateStep1() {
+  const checks = [
+    ['f_serial','e_serial', !v('f_serial')],
+    ['f_product','e_product', !document.getElementById('f_product').value],
+    ['f_company','e_company', !v('f_company')],
+    ['f_purchasedate','e_purchasedate', !v('f_purchasedate')],
+  ];
+  let ok = true;
+  checks.forEach(([f,e,bad]) => { setErr(f,e,bad); if(bad) ok=false; });
+  if (ok) goStep(2);
+}
+
+function validateStep2() {
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('f_email'));
+  const checks = [
+    ['f_name','e_name', !v('f_name')],
+    ['f_phone','e_phone', !v('f_phone')],
+    ['f_email','e_email', !emailValid],
+  ];
+  let ok = true;
+  checks.forEach(([f,e,bad]) => { setErr(f,e,bad); if(bad) ok=false; });
+  if (ok) goStep(3);
+}
+
+function validateStep3() {
+  const checks = [
+    ['f_postal','e_postal', !v('f_postal')],
+    ['f_houseno','e_houseno', !v('f_houseno')],
+    ['f_subdistrict','e_subdistrict', !v('f_subdistrict')],
+    ['f_district','e_district', !v('f_district')],
+    ['f_province','e_province', !v('f_province')],
+  ];
+  let ok = true;
+  checks.forEach(([f,e,bad]) => { setErr(f,e,bad); if(bad) ok=false; });
+  if (ok) submitForm();
+}
+
+// ── Submit ──
+function submitForm() {
+  const address = [v('f_houseno'), v('f_building'), 'แขวง'+v('f_subdistrict'), 'เขต'+v('f_district'), v('f_province'), v('f_postal')].filter(Boolean).join(' ');
+  const entry = {
+    id: Date.now(),
+    registeredAt: new Date().toISOString(),
+    serial: v('f_serial'), product: v('f_product'), company: v('f_company'),
+    purchaseDate: v('f_purchasedate'), name: v('f_name'), phone: v('f_phone'),
+    email: v('f_email'), postal: v('f_postal'), houseNo: v('f_houseno'),
+    building: v('f_building'), subdistrict: v('f_subdistrict'), district: v('f_district'),
+    province: v('f_province'), address, receiptName: uploadedFile ? uploadedFile.name : '', receiptData: uploadedFile ? uploadedFile.dataUrl : '', status: 'ลงทะเบียนแล้ว'
+  };
+  const data = loadData(); data.push(entry); saveData(data);
+
+  // ── Send to Google Sheets ──
+  sendToSheets(entry);
+
+  // Compute expiry date (2 years from purchase)
+  const purchaseDt = new Date(entry.purchaseDate + 'T00:00:00');
+  const expiryDt = new Date(purchaseDt);
+  expiryDt.setFullYear(expiryDt.getFullYear() + 2);
+  const expiryStr = fmtDate(expiryDt.toISOString().slice(0,10));
+
+  document.getElementById('wc_serial').textContent = entry.serial;
+  document.getElementById('wc_product').textContent = entry.product;
+  document.getElementById('wc_date').textContent = fmtDate(entry.purchaseDate);
+  document.getElementById('wc_name').textContent = entry.name;
+  document.getElementById('wc_email').textContent = entry.email;
+  document.getElementById('wc_expiry').textContent = expiryStr;
+
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('stepSuccess').classList.add('active');
+  ['d1','d2','d3'].forEach(id => { document.getElementById(id).className = 'dot done'; });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+}
+
+
+// ── Google Sheets sync ──
+function sendToSheets(entry) {
+  const purchaseDt = new Date(entry.purchaseDate + 'T00:00:00');
+  const expiryDt = new Date(purchaseDt);
+  expiryDt.setFullYear(expiryDt.getFullYear() + 2);
+
+  const payload = {
+    id:           entry.id,
+    registeredAt: entry.registeredAt,
+    serial:       entry.serial,
+    product:      entry.product,
+    company:      entry.company,
+    purchaseDate: fmtDate(entry.purchaseDate),
+    expiryDate:   fmtDate(expiryDt.toISOString().slice(0,10)),
+    name:         entry.name,
+    phone:        entry.phone,
+    email:        entry.email,
+    postal:       entry.postal,
+    houseNo:      entry.houseNo,
+    building:     entry.building || '',
+    subdistrict:  entry.subdistrict,
+    district:     entry.district,
+    province:     entry.province,
+    address:      entry.address,
+    receiptName:  entry.receiptName || '',
+    status:       entry.status
+  };
+
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(err => console.warn('Sheets sync failed:', err));
+}
+
+
+function resetForm() {
+  ['f_serial','f_product','f_purchasedate','f_name','f_phone','f_email','f_postal','f_houseno','f_building','f_subdistrict','f_district','f_province']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f_company').value = 'xBloom Thailand';
+  uploadedFile = null;
+  document.getElementById('uploadText').textContent = 'แตะเพื่อเลือกรูปภาพ';
+  document.getElementById('uploadArea').classList.remove('has-file');
+  document.getElementById('fileInput').value = '';
+  currentStep = 1;
+  document.getElementById('stepSuccess').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  updateDots(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const [y,m,dd] = d.split('-');
+  return `${dd}/${m}/${y}`;
+}
+
+// ── Upload ──
+function handleFile(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedFile = { name: file.name, dataUrl: e.target.result };
+      document.getElementById('uploadText').textContent = '✓ ' + file.name;
+      document.getElementById('uploadArea').classList.add('has-file');
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// ── Postal Dropdown ──
+const postalData = [
+  {code:'10100',sub:'พระบรมมหาราชวัง',dist:'พระนคร',prov:'กรุงเทพมหานคร'},
+  {code:'10100',sub:'วังบูรพาภิรมย์',dist:'พระนคร',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'คลองเตย',dist:'คลองเตย',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'คลองตัน',dist:'คลองเตย',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'พระโขนง',dist:'คลองเตย',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'คลองเตยเหนือ',dist:'วัฒนา',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'คลองตันเหนือ',dist:'วัฒนา',prov:'กรุงเทพมหานคร'},
+  {code:'10110',sub:'วัฒนา',dist:'วัฒนา',prov:'กรุงเทพมหานคร'},
+  {code:'10120',sub:'บางกระบือ',dist:'บางกอกน้อย',prov:'กรุงเทพมหานคร'},
+  {code:'10120',sub:'อรุณอมรินทร์',dist:'บางกอกน้อย',prov:'กรุงเทพมหานคร'},
+  {code:'10150',sub:'บางรัก',dist:'บางรัก',prov:'กรุงเทพมหานคร'},
+  {code:'10200',sub:'คลองจั่น',dist:'บึงกุ่ม',prov:'กรุงเทพมหานคร'},
+  {code:'10260',sub:'บางนา',dist:'บางนา',prov:'กรุงเทพมหานคร'},
+  {code:'10270',sub:'ลาดกระบัง',dist:'ลาดกระบัง',prov:'กรุงเทพมหานคร'},
+  {code:'10310',sub:'สาทร',dist:'สาทร',prov:'กรุงเทพมหานคร'},
+  {code:'10330',sub:'สีลม',dist:'บางรัก',prov:'กรุงเทพมหานคร'},
+  {code:'10500',sub:'ลุมพินี',dist:'ปทุมวัน',prov:'กรุงเทพมหานคร'},
+  {code:'10500',sub:'ปทุมวัน',dist:'ปทุมวัน',prov:'กรุงเทพมหานคร'},
+  {code:'10900',sub:'บางซื่อ',dist:'บางซื่อ',prov:'กรุงเทพมหานคร'},
+  {code:'11000',sub:'ตลาดขวัญ',dist:'เมืองนนทบุรี',prov:'นนทบุรี'},
+  {code:'12000',sub:'บางกระสอ',dist:'เมืองนนทบุรี',prov:'นนทบุรี'},
+  {code:'13000',sub:'หอรัตนไชย',dist:'พระนครศรีอยุธยา',prov:'พระนครศรีอยุธยา'},
+  {code:'20000',sub:'บางปลาสร้อย',dist:'เมืองชลบุรี',prov:'ชลบุรี'},
+  {code:'20150',sub:'หนองปรือ',dist:'บางละมุง',prov:'ชลบุรี'},
+  {code:'20260',sub:'แหลมฉบัง',dist:'ศรีราชา',prov:'ชลบุรี'},
+  {code:'30000',sub:'ในเมือง',dist:'เมืองนครราชสีมา',prov:'นครราชสีมา'},
+  {code:'40000',sub:'ในเมือง',dist:'เมืองขอนแก่น',prov:'ขอนแก่น'},
+  {code:'50000',sub:'ช้างคลาน',dist:'เมืองเชียงใหม่',prov:'เชียงใหม่'},
+  {code:'50000',sub:'พระสิงห์',dist:'เมืองเชียงใหม่',prov:'เชียงใหม่'},
+  {code:'50200',sub:'สารภี',dist:'สารภี',prov:'เชียงใหม่'},
+  {code:'56000',sub:'ในเมือง',dist:'เมืองพะเยา',prov:'พะเยา'},
+  {code:'57000',sub:'เวียง',dist:'เมืองเชียงราย',prov:'เชียงราย'},
+  {code:'76000',sub:'ท่าราบ',dist:'เมืองเพชรบุรี',prov:'เพชรบุรี'},
+  {code:'80000',sub:'ท่าวัง',dist:'เมืองนครศรีธรรมราช',prov:'นครศรีธรรมราช'},
+  {code:'83000',sub:'ตลาดใหญ่',dist:'เมืองภูเก็ต',prov:'ภูเก็ต'},
+  {code:'84000',sub:'ตลาด',dist:'เมืองสุราษฎร์ธานี',prov:'สุราษฎร์ธานี'},
+  {code:'90000',sub:'บ่อยาง',dist:'เมืองสงขลา',prov:'สงขลา'},
+  {code:'90110',sub:'หาดใหญ่',dist:'หาดใหญ่',prov:'สงขลา'},
+];
+
+function filterPostal(input) {
+  const q = input.value.trim();
+  const dd = document.getElementById('postal-dd');
+  if (q.length < 2) { dd.classList.remove('open'); return; }
+  const matches = postalData.filter(p => p.code.startsWith(q));
+  if (!matches.length) { dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.slice(0,8).map(p =>
+    `<div class="dropdown-item" onclick="selectPostal('${p.code}','${p.sub}','${p.dist}','${p.prov}')">
+      <strong>${p.code}</strong> — ${p.sub}, ${p.dist}, ${p.prov}
+    </div>`
+  ).join('');
+  dd.classList.add('open');
+}
+
+function selectPostal(code, sub, dist, prov) {
+  document.getElementById('f_postal').value = code;
+  document.getElementById('f_subdistrict').value = sub;
+  document.getElementById('f_district').value = dist;
+  document.getElementById('f_province').value = prov;
+  document.getElementById('postal-dd').classList.remove('open');
+  // Clear errors
+  ['f_postal','f_subdistrict','f_district','f_province'].forEach(id => document.getElementById(id).classList.remove('error'));
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#f_postal') && !e.target.closest('#postal-dd'))
+    document.getElementById('postal-dd').classList.remove('open');
+});
+
+// ── Admin ──
+function openAdmin() {
+  document.getElementById('pwModal').classList.add('open');
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwErr').style.display = 'none';
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+function closeModal() { document.getElementById('pwModal').classList.remove('open'); }
+function checkPw() {
+  if (document.getElementById('pwInput').value === ADMIN_PW) {
+    closeModal(); showAdmin();
+  } else {
+    document.getElementById('pwErr').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+function showAdmin() {
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('tabNav').style.display = 'none';
+  const checker = document.getElementById('checkerCard');
+  if (checker) checker.style.display = 'none';
+  document.getElementById('adminPanel').classList.add('open');
+  renderAdmin();
+}
+function closeAdmin() {
+  document.getElementById('adminPanel').classList.remove('open');
+  document.getElementById('tabNav').style.display = '';
+  document.getElementById('formCard').style.display = 'block';
+  const checker = document.getElementById('checkerCard');
+  if (checker) checker.style.display = 'none';
+  document.getElementById('tab_register').classList.add('active');
+  document.getElementById('tab_check').classList.remove('active');
+}
+function renderAdmin() {
+  const allData = loadData();
+  const q = (document.getElementById('adminSearch') ? document.getElementById('adminSearch').value : '').toLowerCase().trim();
+  const data = q ? allData.filter(d =>
+    (d.serial||'').toLowerCase().includes(q) ||
+    (d.name||'').toLowerCase().includes(q) ||
+    (d.product||'').toLowerCase().includes(q) ||
+    (d.email||'').toLowerCase().includes(q) ||
+    (d.phone||'').toLowerCase().includes(q) ||
+    (d.company||'').toLowerCase().includes(q)
+  ) : allData;
+
+  const today = new Date().toDateString();
+  const todayCount = allData.filter(d => new Date(d.registeredAt).toDateString() === today).length;
+  const companies = [...new Set(allData.map(d => d.company))].length;
+  const products = [...new Set(allData.map(d => d.product))].length;
+
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${allData.length}</div><div class="stat-label">ทั้งหมด</div></div>
+    <div class="stat-card"><div class="stat-num">${q ? data.length : todayCount}</div><div class="stat-label">${q ? 'ผลลัพธ์' : 'วันนี้'}</div></div>
+    <div class="stat-card"><div class="stat-num">${companies}</div><div class="stat-label">บริษัท</div></div>
+    <div class="stat-card"><div class="stat-num">${products}</div><div class="stat-label">รุ่นสินค้า</div></div>
+  `;
+
+  const tbody = document.getElementById('tableBody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">${q ? '🔍 ไม่พบข้อมูลที่ค้นหา "'+q+'"' : '⚠ ยังไม่มีข้อมูลการลงทะเบียน'}</div></td></tr>`;
+    return;
+  }
+
+  function hl(text) {
+    if (!q || !text) return text || '';
+    return String(text).replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<span class="highlight">$1</span>');
+  }
+
+  tbody.innerHTML = [...data].reverse().map((d, i) => `
+    <tr id="row_${d.id}">
+      <td>${data.length - i}</td>
+      <td style="white-space:nowrap;font-size:12px">${new Date(d.registeredAt).toLocaleDateString('th-TH')}<br><span style="color:var(--muted)">${new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td style="font-family:monospace;font-size:12px">${hl(d.serial)}</td>
+      <td>${hl(d.product)}</td>
+      <td>${hl(d.company)}</td>
+      <td style="white-space:nowrap">${fmtDate(d.purchaseDate)}</td>
+      <td>${hl(d.name)}</td>
+      <td style="white-space:nowrap">${hl(d.phone)}</td>
+      <td>${hl(d.email)}</td>
+      <td style="font-size:12px;max-width:200px">${d.address}</td>
+      <td>${d.receiptData ? `<button class="view-receipt-btn" onclick="viewReceipt('${d.id}')">🖼 ดูรูป</button>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="badge badge-green">${d.status}</span></td>
+      <td style="white-space:nowrap;display:flex;gap:6px"><button class="edit-btn" onclick="openEditModal(${d.id})" title="แก้ไข">✏️</button><button class="del-btn" onclick="deleteEntry(${d.id})" title="ลบรายการนี้">🗑</button></td>
+    </tr>
+  `).join('');
+}
+
+// ── Export ──
+function exportCSV() {
+  const data = loadData();
+  if (!data.length) { alert('ไม่มีข้อมูลให้ export'); return; }
+  const headers = ['#','วันที่ลงทะเบียน','S/N','สินค้า','บริษัท','วันที่ซื้อ','ชื่อลูกค้า','โทร','อีเมล','รหัสไปรษณีย์','เลขที่','ตึก/ซอย','แขวง/ตำบล','เขต/อำเภอ','จังหวัด','ที่อยู่เต็ม','มีใบเสร็จ','สถานะ'];
+  const rows = data.map((d,i) => [
+    i+1, new Date(d.registeredAt).toLocaleString('th-TH'),
+    d.serial, d.product, d.company, fmtDate(d.purchaseDate),
+    d.name, d.phone, d.email,
+    d.postal, d.houseNo, d.building||'', d.subdistrict, d.district, d.province,
+    d.address, d.receiptName ? d.receiptName : 'ไม่มี', d.status
+  ]);
+  const csv = [headers,...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  dl('\uFEFF'+csv, `xbloom_warranties_${ds()}.csv`, 'text/csv;charset=utf-8');
+}
+
+function exportJSON() {
+  const data = loadData();
+  if (!data.length) { alert('ไม่มีข้อมูลให้ export'); return; }
+  dl(JSON.stringify(data, null, 2), `xbloom_warranties_${ds()}.json`, 'application/json');
+}
+
+function dl(content, filename, type) {
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([content], {type})), download: filename
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function ds() { return new Date().toISOString().slice(0,10).replace(/-/g,''); }
+
+function clearAll() {
+  if (confirm('ลบข้อมูลทั้งหมด?\nการกระทำนี้ไม่สามารถย้อนกลับได้')) {
+    localStorage.removeItem(STORAGE_KEY);
+    renderAdmin();
+  }
+}
+
+function deleteEntry(id) {
+  if (!confirm('ลบรายการนี้หรือไม่?')) return;
+  const data = loadData().filter(d => d.id !== id);
+  saveData(data);
+  // Animate row out then re-render
+  const row = document.getElementById('row_' + id);
+  if (row) {
+    row.style.transition = 'opacity .25s, transform .25s';
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(16px)';
+    setTimeout(() => renderAdmin(), 280);
+  } else {
+    renderAdmin();
+  }
+}
+
+// Init product dropdown
+renderProductSelect('f_product', '');
+
+// Seed demo data if empty
+if (!loadData().length) {
+  saveData([
+    {id:1,registeredAt:'2025-05-10T09:23:00Z',serial:'J15N0100001',product:'xBloom Studio Midnight Black',company:'ABT',purchaseDate:'2025-05-01',name:'สมชาย ใจดี',phone:'081-111-2222',email:'somchai@email.com',postal:'10110',houseNo:'10',building:'ซอย 5',subdistrict:'วัฒนา',district:'วัฒนา',province:'กรุงเทพมหานคร',address:'10 ซอย 5 แขวงวัฒนา เขตวัฒนา กรุงเทพมหานคร 10110',receipt:'receipt.jpg',status:'ลงทะเบียนแล้ว'},
+    {id:2,registeredAt:'2025-05-15T14:10:00Z',serial:'J15N0100002',product:'xBloom Studio Pearl White',company:'TechCo',purchaseDate:'2025-05-10',name:'นิภา รักดี',phone:'082-333-4444',email:'nipha@email.com',postal:'50000',houseNo:'25',building:'',subdistrict:'ช้างคลาน',district:'เมืองเชียงใหม่',province:'เชียงใหม่',address:'25 แขวงช้างคลาน เขตเมืองเชียงใหม่ เชียงใหม่ 50000',receipt:'',status:'ลงทะเบียนแล้ว'},
+    {id:3,registeredAt:'2025-05-19T10:05:00Z',serial:'J15N012321312321312',product:'xBloom Studio Midnight Black',company:'ABT',purchaseDate:'2025-05-19',name:'กรีติชา นามะรรม',phone:'089-323-3232',email:'kriiticha@gmail.com',postal:'10110',houseNo:'11',building:'เอกมัย ซอย 10',subdistrict:'คลองตันเหนือ',district:'วัฒนา',province:'กรุงเทพมหานคร',address:'11 เอกมัย ซอย 10 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110',receipt:'Sndsadsa.jpg',status:'ลงทะเบียนแล้ว'},
+  ]);
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  const isRegister = tab === 'register';
+  document.getElementById('tab_register').classList.toggle('active', isRegister);
+  document.getElementById('tab_check').classList.toggle('active', !isRegister);
+  document.getElementById('formCard').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('checkerCard').classList.toggle('open', !isRegister);
+  // Reset checker on switch
+  if (!isRegister) {
+    document.getElementById('check_serial').value = '';
+    document.getElementById('warrantyResult').classList.remove('show');
+    document.getElementById('notFound').classList.remove('show');
+  }
+}
+
+// ── Warranty checker ──
+function checkWarranty() {
+  const serial = document.getElementById('check_serial').value.trim();
+  if (!serial) return;
+
+  const data = loadData();
+  const entry = data.find(d => d.serial.toLowerCase() === serial.toLowerCase());
+
+  document.getElementById('warrantyResult').classList.remove('show');
+  document.getElementById('notFound').classList.remove('show');
+
+  if (!entry) {
+    document.getElementById('notFound').classList.add('show');
+    return;
+  }
+
+  const purchaseDate = new Date(entry.purchaseDate + 'T00:00:00');
+  const expiryDate = new Date(purchaseDate);
+  expiryDate.setFullYear(expiryDate.getFullYear() + 2);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const totalDays = Math.round((expiryDate - purchaseDate) / 86400000);
+  const daysUsed = Math.round((today - purchaseDate) / 86400000);
+  const daysLeft = Math.round((expiryDate - today) / 86400000);
+  const pct = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100));
+  const remaining = pct < 100;
+
+  // Status
+  const banner = document.getElementById('statusBanner');
+  banner.className = 'status-banner';
+  const fill = document.getElementById('barFill');
+  fill.className = 'progress-bar-fill';
+
+  if (!remaining) {
+    // Expired
+    banner.classList.add('expired');
+    document.getElementById('statusIcon').textContent = '❌';
+    document.getElementById('statusTitle').textContent = 'หมดระยะประกันแล้ว';
+    document.getElementById('statusSub').textContent = 'ประกันสิ้นสุดเมื่อ ' + fmtDate(expiryDate.toISOString().slice(0,10));
+    fill.classList.add('fill-red');
+    document.getElementById('res_remaining').textContent = 'หมดประกันแล้ว';
+    document.getElementById('res_remaining').style.color = 'var(--red)';
+  } else if (daysLeft <= 90) {
+    // Expiring soon
+    banner.classList.add('soon');
+    document.getElementById('statusIcon').textContent = '⚠️';
+    document.getElementById('statusTitle').textContent = 'ใกล้หมดระยะประกัน';
+    document.getElementById('statusSub').textContent = 'เหลือเวลาอีก ' + daysLeft + ' วัน';
+    fill.classList.add('fill-orange');
+    document.getElementById('res_remaining').textContent = daysLeft + ' วัน';
+    document.getElementById('res_remaining').style.color = '#b87a00';
+  } else {
+    // Valid
+    banner.classList.add('valid');
+    document.getElementById('statusIcon').textContent = '✅';
+    document.getElementById('statusTitle').textContent = 'อยู่ในระยะประกัน';
+    document.getElementById('statusSub').textContent = 'เหลืออีก ' + daysLeft + ' วัน';
+    fill.classList.add('fill-green');
+    const months = Math.floor(daysLeft / 30);
+    const days = daysLeft % 30;
+    document.getElementById('res_remaining').textContent = months + ' เดือน ' + days + ' วัน';
+    document.getElementById('res_remaining').style.color = 'var(--green)';
+  }
+
+  // Bar
+  setTimeout(() => { fill.style.width = pct + '%'; }, 50);
+  document.getElementById('barStart').textContent = fmtDate(entry.purchaseDate);
+  document.getElementById('barEnd').textContent = fmtDate(expiryDate.toISOString().slice(0,10));
+  document.getElementById('barPct').textContent = Math.round(pct) + '% ใช้ไปแล้ว';
+
+  // Details
+  document.getElementById('res_product').textContent = entry.product;
+  document.getElementById('res_name').textContent = entry.name;
+  document.getElementById('res_purchaseDate').textContent = fmtDate(entry.purchaseDate);
+  document.getElementById('res_expiryDate').textContent = fmtDate(expiryDate.toISOString().slice(0,10));
+
+  document.getElementById('warrantyResult').classList.add('show');
+}
+
+
+// ── Receipt Viewer ──
+function viewReceipt(id) {
+  const data = loadData();
+  const entry = data.find(d => String(d.id) === String(id));
+  if (!entry || !entry.receiptData) return;
+  document.getElementById('receiptModalImg').src = entry.receiptData;
+  document.getElementById('receiptModalTitle').textContent = '📄 ' + (entry.receiptName || 'ใบเสร็จ') + ' — ' + entry.name;
+  const dl = document.getElementById('receiptDownloadBtn');
+  dl.href = entry.receiptData;
+  dl.download = entry.receiptName || 'receipt.jpg';
+  document.getElementById('receiptModal').classList.add('open');
+}
+function closeReceiptModal() {
+  document.getElementById('receiptModal').classList.remove('open');
+  document.getElementById('receiptModalImg').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeReceiptModal(); });
+
+
+// ── Admin Search ──
+function filterTable(q) {
+  const rows = document.querySelectorAll('#tableBody tr[id]');
+  const term = q.toLowerCase().trim();
+  let visible = 0;
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const show = !term || text.includes(term);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+    row.classList.toggle('highlight', !!term && show);
+  });
+  const total = rows.length;
+  document.getElementById('searchCount').textContent = term ? `แสดง ${visible} / ${total} รายการ` : '';
+}
+
+// ── Edit Modal ──
+function openEditModal(id) {
+  const data = loadData();
+  const d = data.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('edit_id').value = d.id;
+  document.getElementById('edit_serial').value = d.serial || '';
+  document.getElementById('edit_product').value = d.product || '';
+  document.getElementById('edit_company').value = d.company || '';
+  document.getElementById('edit_purchaseDate').value = d.purchaseDate || '';
+  document.getElementById('edit_name').value = d.name || '';
+  document.getElementById('edit_phone').value = d.phone || '';
+  document.getElementById('edit_email').value = d.email || '';
+  document.getElementById('edit_houseNo').value = d.houseNo || '';
+  document.getElementById('edit_building').value = d.building || '';
+  document.getElementById('edit_subdistrict').value = d.subdistrict || '';
+  document.getElementById('edit_district').value = d.district || '';
+  document.getElementById('edit_province').value = d.province || '';
+  document.getElementById('edit_postal').value = d.postal || '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+function saveEdit() {
+  const id = Number(document.getElementById('edit_id').value);
+  const data = loadData();
+  const idx = data.findIndex(x => x.id === id);
+  if (idx === -1) return;
+
+  const houseNo      = document.getElementById('edit_houseNo').value.trim();
+  const building     = document.getElementById('edit_building').value.trim();
+  const subdistrict  = document.getElementById('edit_subdistrict').value.trim();
+  const district     = document.getElementById('edit_district').value.trim();
+  const province     = document.getElementById('edit_province').value.trim();
+  const postal       = document.getElementById('edit_postal').value.trim();
+  const address = [houseNo, building, subdistrict ? 'แขวง'+subdistrict : '', district ? 'เขต'+district : '', province, postal].filter(Boolean).join(' ');
+
+  data[idx] = {
+    ...data[idx],
+    serial:      document.getElementById('edit_serial').value.trim(),
+    product:     document.getElementById('edit_product').value,
+    company:     document.getElementById('edit_company').value.trim(),
+    purchaseDate: document.getElementById('edit_purchaseDate').value,
+    name:        document.getElementById('edit_name').value.trim(),
+    phone:       document.getElementById('edit_phone').value.trim(),
+    email:       document.getElementById('edit_email').value.trim(),
+    houseNo, building, subdistrict, district, province, postal, address,
+  };
+
+  saveData(data);
+  closeEditModal();
+  // Preserve search query after re-render
+  const q = document.getElementById('adminSearch').value;
+  renderAdmin();
+  if (q) { document.getElementById('adminSearch').value = q; filterTable(q); }
+}
+
+
+// ── Edit Modal ──
+function openEditModal(id) {
+  const data = loadData();
+  const d = data.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('edit_id').value = d.id;
+  document.getElementById('edit_serial').value = d.serial || '';
+  document.getElementById('edit_product').value = d.product || '';
+  document.getElementById('edit_company').value = d.company || '';
+  document.getElementById('edit_purchaseDate').value = d.purchaseDate || '';
+  document.getElementById('edit_name').value = d.name || '';
+  document.getElementById('edit_phone').value = d.phone || '';
+  document.getElementById('edit_email').value = d.email || '';
+  document.getElementById('edit_houseNo').value = d.houseNo || '';
+  document.getElementById('edit_building').value = d.building || '';
+  document.getElementById('edit_subdistrict').value = d.subdistrict || '';
+  document.getElementById('edit_district').value = d.district || '';
+  document.getElementById('edit_province').value = d.province || '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+function saveEdit() {
+  const id = parseInt(document.getElementById('edit_id').value);
+  const data = loadData();
+  const idx = data.findIndex(x => x.id === id);
+  if (idx === -1) return;
+
+  const houseNo = document.getElementById('edit_houseNo').value.trim();
+  const building = document.getElementById('edit_building').value.trim();
+  const subdistrict = document.getElementById('edit_subdistrict').value.trim();
+  const district = document.getElementById('edit_district').value.trim();
+  const province = document.getElementById('edit_province').value.trim();
+  const postal = data[idx].postal || '';
+
+  data[idx] = {
+    ...data[idx],
+    serial:      document.getElementById('edit_serial').value.trim(),
+    product:     document.getElementById('edit_product').value,
+    company:     document.getElementById('edit_company').value.trim(),
+    purchaseDate: document.getElementById('edit_purchaseDate').value,
+    name:        document.getElementById('edit_name').value.trim(),
+    phone:       document.getElementById('edit_phone').value.trim(),
+    email:       document.getElementById('edit_email').value.trim(),
+    houseNo, building, subdistrict, district, province,
+    address: [houseNo, building, 'แขวง'+subdistrict, 'เขต'+district, province, postal].filter(Boolean).join(' '),
+    updatedAt: new Date().toISOString()
+  };
+
+  saveData(data);
+  closeEditModal();
+  renderAdmin();
+}
+
+
+// ── Product Manager ──
+function toggleProductManager() {
+  const pm = document.getElementById('productManager');
+  const isOpen = pm.style.display !== 'none';
+  pm.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderProductManager();
+}
+
+function renderProductManager() {
+  const products = loadProducts();
+  const list = document.getElementById('productList');
+  if (!products.length) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--muted);text-align:center;padding:12px">ยังไม่มีรุ่นสินค้า</p>';
+    return;
+  }
+  list.innerHTML = products.map((p, i) => `
+    <div class="pm-product-row">
+      <span class="pm-product-name">${p}</span>
+      <button class="del-btn" onclick="removeProduct(${i})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function addProduct() {
+  const input = document.getElementById('newProductInput');
+  const name = input.value.trim();
+  const errEl = document.getElementById('e_newProduct');
+  if (!name) { errEl.classList.add('show'); return; }
+  errEl.classList.remove('show');
+  const products = loadProducts();
+  if (products.includes(name)) { alert('มีรุ่นนี้อยู่แล้วครับ'); return; }
+  products.push(name);
+  saveProducts(products);
+  input.value = '';
+  renderProductManager();
+  renderProductSelect('f_product', '');
+}
+
+function removeProduct(index) {
+  const products = loadProducts();
+  const name = products[index];
+  if (!confirm(`ลบรุ่น "${name}" หรือไม่?`)) return;
+  products.splice(index, 1);
+  saveProducts(products);
+  renderProductManager();
+  renderProductSelect('f_product', '');
+}
+
+</script>
+</body>
+</html>
