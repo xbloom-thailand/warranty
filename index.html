@@ -1136,9 +1136,10 @@ function checkWarranty() {
   fetch(url)
     .then(r => r.text())
     .then(text => {
-      // gviz returns: /*O_o*/
-google.visualization.Query.setResponse({...});
-      const clean = text.replace(/^[^\{]+/, '').replace(/\);?\s*$/, '');
+      // parse gviz JSON response
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}');
+      const clean = text.slice(jsonStart, jsonEnd + 1);
       const json = JSON.parse(clean);
       const cols = json.table.cols.map(c => c.label || c.id);
       const rows = json.table.rows || [];
