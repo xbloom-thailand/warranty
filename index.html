@@ -1120,17 +1120,61 @@ function checkWarranty() {
   const serial = document.getElementById('check_serial').value.trim();
   if (!serial) return;
 
-  const data = loadData();
-  const entry = data.find(d => d.serial.toLowerCase() === serial.toLowerCase());
-
   document.getElementById('warrantyResult').classList.remove('show');
   document.getElementById('notFound').classList.remove('show');
 
-  if (!entry) {
-    document.getElementById('notFound').classList.add('show');
+  // Show loading
+  document.getElementById('notFound').innerHTML = '<div class="not-found-icon">⏳</div><p>กำลังค้นหาข้อมูล...</p>';
+  document.getElementById('notFound').classList.add('show');
+
+  // Search localStorage first, then Google Sheets
+  const localData = loadData();
+  const localEntry = localData.find(d => d.serial.toLowerCase() === serial.toLowerCase());
+
+  if (localEntry) {
+    document.getElementById('notFound').classList.remove('show');
+    document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+    showWarrantyResult(localEntry);
     return;
   }
 
+  // Fetch from Google Sheets via Apps Script
+  fetch(SHEETS_URL + '?action=search&serial=' + encodeURIComponent(serial), { mode: 'no-cors' })
+    .then(() => {
+      // no-cors can't read response, fallback to direct sheet search via URL
+      return fetch('https://docs.google.com/spreadsheets/d/1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg/gviz/tq?tqx=out:json&sheet=warranties');
+    })
+    .then(r => r.text())
+    .then(text => {
+      const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
+      const rows = json.table.rows;
+      const cols = json.table.cols.map(c => c.label);
+      const serialIdx = cols.indexOf('serial');
+      const match = rows.find(r => r.c[serialIdx] && r.c[serialIdx].v && r.c[serialIdx].v.toLowerCase() === serial.toLowerCase());
+      document.getElementById('notFound').classList.remove('show');
+      document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+      if (!match) {
+        document.getElementById('notFound').classList.add('show');
+        return;
+      }
+      // Map row to entry object
+      const entry = {};
+      cols.forEach((col, i) => { entry[col] = match.c[i] ? match.c[i].v : ''; });
+      // purchaseDate from sheet is DD/MM/YYYY, convert to YYYY-MM-DD
+      if (entry.purchaseDate && entry.purchaseDate.includes('/')) {
+        const parts = entry.purchaseDate.split('/');
+        entry.purchaseDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+      }
+      showWarrantyResult(entry);
+    })
+    .catch(() => {
+      document.getElementById('notFound').classList.remove('show');
+      document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+      document.getElementById('notFound').classList.add('show');
+    });
+}
+
+function showWarrantyResult(entry) {
   const purchaseDate = new Date(entry.purchaseDate + 'T00:00:00');
   const expiryDate = new Date(purchaseDate);
   expiryDate.setFullYear(expiryDate.getFullYear() + 2);
