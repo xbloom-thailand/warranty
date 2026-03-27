@@ -1129,45 +1129,43 @@ function checkWarranty() {
     return;
   }
 
-  // 2) Fetch from Google Sheets via gviz
+  // 2) Fetch from Google Sheets (CSV export — most reliable)
   const SHEET_ID = '1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg';
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=warranties`;
+  const csvUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&sheet=warranties';
 
-  fetch(url)
-    .then(r => r.text())
-    .then(text => {
-      // parse gviz JSON response
-      const jsonStart = text.indexOf('{');
-      const jsonEnd = text.lastIndexOf('}');
-      const clean = text.slice(jsonStart, jsonEnd + 1);
-      const json = JSON.parse(clean);
-      const cols = json.table.cols.map(c => c.label || c.id);
-      const rows = json.table.rows || [];
-
-      const serialIdx = cols.findIndex(c => c.toLowerCase() === 'serial');
-      const match = rows.find(r => r.c[serialIdx] && String(r.c[serialIdx].v).toLowerCase() === serial.toLowerCase());
-
+  fetch(csvUrl)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(csv => {
+      const lines = csv.trim().split('\n');
+      if (lines.length < 2) throw new Error('No data');
+      // Parse headers from first row
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      const serialIdx = headers.findIndex(h => h.toLowerCase() === 'serial');
+      if (serialIdx === -1) throw new Error('No serial column');
+      // Find matching row
+      let match = null;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols[serialIdx] && cols[serialIdx].toLowerCase() === serial.toLowerCase()) {
+          match = {};
+          headers.forEach((h, j) => { match[h] = cols[j] || ''; });
+          break;
+        }
+      }
       notFoundEl.classList.remove('show');
       notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
-
-      if (!match) {
-        notFoundEl.classList.add('show');
-        return;
+      if (!match) { notFoundEl.classList.add('show'); return; }
+      // Convert purchaseDate DD/MM/YYYY → YYYY-MM-DD if needed
+      if (match.purchaseDate && match.purchaseDate.includes('/')) {
+        const parts = match.purchaseDate.split('/');
+        if (parts.length === 3) {
+          match.purchaseDate = parts[2] + '-' + parts[1].padStart(2,'0') + '-' + parts[0].padStart(2,'0');
+        }
       }
-
-      // Build entry object from row
-      const entry = {};
-      cols.forEach((col, i) => {
-        entry[col] = (match.c[i] && match.c[i].v !== null) ? String(match.c[i].v) : '';
-      });
-
-      // Convert purchaseDate DD/MM/YYYY → YYYY-MM-DD
-      if (entry.purchaseDate && entry.purchaseDate.includes('/')) {
-        const [dd, mm, yyyy] = entry.purchaseDate.split('/');
-        entry.purchaseDate = `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
-      }
-
-      showWarrantyResult(entry);
+      showWarrantyResult(match);
     })
     .catch(err => {
       console.error('Sheet fetch error:', err);
@@ -1175,6 +1173,20 @@ function checkWarranty() {
       notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
       notFoundEl.classList.add('show');
     });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
 }
 
 function showWarrantyResult(entry) {
