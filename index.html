@@ -1129,30 +1129,44 @@ function checkWarranty() {
     return;
   }
 
-  // 2) Search via Apps Script
-  fetch(SHEETS_URL + '?action=search&serial=' + encodeURIComponent(serial))
-    .then(r => r.json())
-    .then(res => {
-      notFoundEl.classList.remove('show');
-      notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
-      if (res.result !== 'found' || !res.data) {
-        notFoundEl.classList.add('show');
-        return;
-      }
-      const entry = res.data;
-      // Convert purchaseDate DD/MM/YYYY → YYYY-MM-DD if needed
-      if (entry.purchaseDate && String(entry.purchaseDate).includes('/')) {
-        const parts = String(entry.purchaseDate).split('/');
-        entry.purchaseDate = parts[2] + '-' + String(parts[1]).padStart(2,'0') + '-' + String(parts[0]).padStart(2,'0');
-      }
-      showWarrantyResult(entry);
-    })
-    .catch(err => {
-      console.error('Search error:', err);
-      notFoundEl.classList.remove('show');
-      notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+  // 2) Use JSONP to bypass CORS
+  const callbackName = 'warrantyCallback_' + Date.now();
+  const script = document.createElement('script');
+  const timeout = setTimeout(() => {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    notFoundEl.classList.remove('show');
+    notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+    notFoundEl.classList.add('show');
+  }, 10000);
+
+  window[callbackName] = function(res) {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    document.body.removeChild(script);
+    notFoundEl.classList.remove('show');
+    notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+    if (!res || res.result !== 'found' || !res.data) {
       notFoundEl.classList.add('show');
-    });
+      return;
+    }
+    const entry = res.data;
+    if (entry.purchaseDate && String(entry.purchaseDate).includes('/')) {
+      const parts = String(entry.purchaseDate).split('/');
+      entry.purchaseDate = parts[2] + '-' + String(parts[1]).padStart(2,'0') + '-' + String(parts[0]).padStart(2,'0');
+    }
+    showWarrantyResult(entry);
+  };
+
+  script.src = SHEETS_URL + '?action=search&serial=' + encodeURIComponent(serial) + '&callback=' + callbackName;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    notFoundEl.classList.remove('show');
+    notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+    notFoundEl.classList.add('show');
+  };
+  document.body.appendChild(script);
 }
 
 
