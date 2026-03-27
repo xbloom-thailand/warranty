@@ -981,62 +981,92 @@ function closeAdmin() {
   document.getElementById('tab_check').classList.remove('active');
 }
 function renderAdmin() {
-  const allData = loadData();
+  // Show loading state
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">...</div><div class="stat-label">กำลังโหลด</div></div>
+  `;
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⏳ กำลังดึงข้อมูลจาก Google Sheets...</div></td></tr>';
+
+  // Fetch all records from Sheets via JSONP
+  const callbackName = 'adminCallback_' + Date.now();
+  const script = document.createElement('script');
+  const timeout = setTimeout(() => {
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    renderAdminWithData(loadData()); // fallback to localStorage
+  }, 10000);
+
+  window[callbackName] = function(res) {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    if (res && res.result === 'success' && res.data) {
+      renderAdminWithData(res.data);
+    } else {
+      renderAdminWithData(loadData()); // fallback
+    }
+  };
+
+  script.src = SHEETS_URL + '?action=getall&callback=' + callbackName;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    renderAdminWithData(loadData());
+  };
+  document.body.appendChild(script);
+}
+
+function renderAdminWithData(data) {
+  window._adminData = data; // store for export
   const q = (document.getElementById('adminSearch') ? document.getElementById('adminSearch').value : '').toLowerCase().trim();
-  const data = q ? allData.filter(d =>
+  const filtered = q ? data.filter(d =>
     (d.serial||'').toLowerCase().includes(q) ||
     (d.name||'').toLowerCase().includes(q) ||
-    (d.product||'').toLowerCase().includes(q) ||
     (d.email||'').toLowerCase().includes(q) ||
-    (d.phone||'').toLowerCase().includes(q) ||
+    (d.product||'').toLowerCase().includes(q) ||
     (d.company||'').toLowerCase().includes(q)
-  ) : allData;
+  ) : data;
 
   const today = new Date().toDateString();
-  const todayCount = allData.filter(d => new Date(d.registeredAt).toDateString() === today).length;
-  const companies = [...new Set(allData.map(d => d.company))].length;
-  const products = [...new Set(allData.map(d => d.product))].length;
+  const todayCount = data.filter(d => new Date(d.registeredAt).toDateString() === today).length;
+  const companies = [...new Set(data.map(d => d.company))].length;
+  const products = [...new Set(data.map(d => d.product))].length;
 
   document.getElementById('adminStats').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${allData.length}</div><div class="stat-label">ทั้งหมด</div></div>
-    <div class="stat-card"><div class="stat-num">${q ? data.length : todayCount}</div><div class="stat-label">${q ? 'ผลลัพธ์' : 'วันนี้'}</div></div>
+    <div class="stat-card"><div class="stat-num">${data.length}</div><div class="stat-label">ทั้งหมด</div></div>
+    <div class="stat-card"><div class="stat-num">${todayCount}</div><div class="stat-label">วันนี้</div></div>
     <div class="stat-card"><div class="stat-num">${companies}</div><div class="stat-label">บริษัท</div></div>
     <div class="stat-card"><div class="stat-num">${products}</div><div class="stat-label">รุ่นสินค้า</div></div>
   `;
 
   const tbody = document.getElementById('tableBody');
-  if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">${q ? '🔍 ไม่พบข้อมูลที่ค้นหา "'+q+'"' : '⚠ ยังไม่มีข้อมูลการลงทะเบียน'}</div></td></tr>`;
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">${q ? '🔍 ไม่พบข้อมูลที่ค้นหา' : '⚠ ยังไม่มีข้อมูลการลงทะเบียน'}</div></td></tr>`;
     return;
   }
-
-  function hl(text) {
-    if (!q || !text) return text || '';
-    return String(text).replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<span class="highlight">$1</span>');
-  }
-
-  tbody.innerHTML = [...data].reverse().map((d, i) => `
+  tbody.innerHTML = [...filtered].reverse().map((d, i) => `
     <tr id="row_${d.id}">
-      <td>${data.length - i}</td>
-      <td style="white-space:nowrap;font-size:12px">${new Date(d.registeredAt).toLocaleDateString('th-TH')}<br><span style="color:var(--muted)">${new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</span></td>
-      <td style="font-family:monospace;font-size:12px">${hl(d.serial)}</td>
-      <td>${hl(d.product)}</td>
-      <td>${hl(d.company)}</td>
-      <td style="white-space:nowrap">${fmtDate(d.purchaseDate)}</td>
-      <td>${hl(d.name)}</td>
-      <td style="white-space:nowrap">${hl(d.phone)}</td>
-      <td>${hl(d.email)}</td>
-      <td style="font-size:12px;max-width:200px">${d.address}</td>
-      <td>${d.receiptData ? `<button class="view-receipt-btn" onclick="viewReceipt('${d.id}')">🖼 ดูรูป</button>` : '<span style="color:var(--muted)">—</span>'}</td>
-      <td><span class="badge badge-green">${d.status}</span></td>
-      <td style="white-space:nowrap;display:flex;gap:6px"><button class="edit-btn" onclick="openEditModal(${d.id})" title="แก้ไข">✏️</button><button class="del-btn" onclick="deleteEntry(${d.id})" title="ลบรายการนี้">🗑</button></td>
+      <td>${filtered.length - i}</td>
+      <td style="white-space:nowrap;font-size:12px">${d.registeredAt ? new Date(d.registeredAt).toLocaleDateString('th-TH') : '—'}<br><span style="color:var(--muted)">${d.registeredAt ? new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : ''}</span></td>
+      <td style="font-family:monospace;font-size:12px">${d.serial||'—'}</td>
+      <td>${d.product||'—'}</td>
+      <td>${d.company||'—'}</td>
+      <td style="white-space:nowrap">${d.purchaseDate ? (d.purchaseDate.includes('/') ? d.purchaseDate : fmtDate(d.purchaseDate)) : '—'}</td>
+      <td>${d.name||'—'}</td>
+      <td style="white-space:nowrap">${d.phone||'—'}</td>
+      <td>${d.email||'—'}</td>
+      <td style="font-size:12px;max-width:200px">${d.address||'—'}</td>
+      <td>${d.receiptName||d.receipt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="badge badge-green">${d.status||'ลงทะเบียนแล้ว'}</span></td>
+      <td><button class="del-btn" onclick="deleteEntry('${d.id}')" title="ลบรายการนี้">🗑</button></td>
     </tr>
   `).join('');
 }
 
+
 // ── Export ──
 function exportCSV() {
-  const data = loadData();
+  const data = window._adminData || loadData();
   if (!data.length) { alert('ไม่มีข้อมูลให้ export'); return; }
   const headers = ['#','วันที่ลงทะเบียน','S/N','สินค้า','บริษัท','วันที่ซื้อ','ชื่อลูกค้า','โทร','อีเมล','รหัสไปรษณีย์','เลขที่','ตึก/ซอย','แขวง/ตำบล','เขต/อำเภอ','จังหวัด','ที่อยู่เต็ม','มีใบเสร็จ','สถานะ'];
   const rows = data.map((d,i) => [
@@ -1051,7 +1081,7 @@ function exportCSV() {
 }
 
 function exportJSON() {
-  const data = loadData();
+  const data = window._adminData || loadData();
   if (!data.length) { alert('ไม่มีข้อมูลให้ export'); return; }
   dl(JSON.stringify(data, null, 2), `xbloom_warranties_${ds()}.json`, 'application/json');
 }
@@ -1074,18 +1104,30 @@ function clearAll() {
 
 function deleteEntry(id) {
   if (!confirm('ลบรายการนี้หรือไม่?')) return;
-  const data = loadData().filter(d => d.id !== id);
-  saveData(data);
-  // Animate row out then re-render
+  // Animate row out
   const row = document.getElementById('row_' + id);
   if (row) {
     row.style.transition = 'opacity .25s, transform .25s';
     row.style.opacity = '0';
     row.style.transform = 'translateX(16px)';
-    setTimeout(() => renderAdmin(), 280);
-  } else {
-    renderAdmin();
   }
+  // Delete from localStorage
+  const data = loadData().filter(d => String(d.id) !== String(id));
+  saveData(data);
+  // Delete from Sheets via JSONP
+  const callbackName = 'deleteCallback_' + Date.now();
+  const script = document.createElement('script');
+  window[callbackName] = function(res) {
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    setTimeout(() => renderAdmin(), 300);
+  };
+  script.src = SHEETS_URL + '?action=delete&id=' + encodeURIComponent(id) + '&callback=' + callbackName;
+  script.onerror = function() {
+    delete window[callbackName];
+    setTimeout(() => renderAdmin(), 300);
+  };
+  document.body.appendChild(script);
 }
 
 // Init product dropdown
