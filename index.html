@@ -1091,14 +1091,7 @@ function deleteEntry(id) {
 // Init product dropdown
 renderProductSelect('f_product', '');
 
-// Seed demo data if empty
-if (!loadData().length) {
-  saveData([
-    {id:1,registeredAt:'2025-05-10T09:23:00Z',serial:'J15N0100001',product:'xBloom Studio Midnight Black',company:'ABT',purchaseDate:'2025-05-01',name:'สมชาย ใจดี',phone:'081-111-2222',email:'somchai@email.com',postal:'10110',houseNo:'10',building:'ซอย 5',subdistrict:'วัฒนา',district:'วัฒนา',province:'กรุงเทพมหานคร',address:'10 ซอย 5 แขวงวัฒนา เขตวัฒนา กรุงเทพมหานคร 10110',receipt:'receipt.jpg',status:'ลงทะเบียนแล้ว'},
-    {id:2,registeredAt:'2025-05-15T14:10:00Z',serial:'J15N0100002',product:'xBloom Studio Pearl White',company:'TechCo',purchaseDate:'2025-05-10',name:'นิภา รักดี',phone:'082-333-4444',email:'nipha@email.com',postal:'50000',houseNo:'25',building:'',subdistrict:'ช้างคลาน',district:'เมืองเชียงใหม่',province:'เชียงใหม่',address:'25 แขวงช้างคลาน เขตเมืองเชียงใหม่ เชียงใหม่ 50000',receipt:'',status:'ลงทะเบียนแล้ว'},
-    {id:3,registeredAt:'2025-05-19T10:05:00Z',serial:'J15N012321312321312',product:'xBloom Studio Midnight Black',company:'ABT',purchaseDate:'2025-05-19',name:'กรีติชา นามะรรม',phone:'089-323-3232',email:'kriiticha@gmail.com',postal:'10110',houseNo:'11',building:'เอกมัย ซอย 10',subdistrict:'คลองตันเหนือ',district:'วัฒนา',province:'กรุงเทพมหานคร',address:'11 เอกมัย ซอย 10 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110',receipt:'Sndsadsa.jpg',status:'ลงทะเบียนแล้ว'},
-  ]);
-}
+// (no demo data)
 
 // ── Tab switching ──
 function switchTab(tab) {
@@ -1120,57 +1113,66 @@ function checkWarranty() {
   const serial = document.getElementById('check_serial').value.trim();
   if (!serial) return;
 
-  document.getElementById('warrantyResult').classList.remove('show');
-  document.getElementById('notFound').classList.remove('show');
+  const resultEl = document.getElementById('warrantyResult');
+  const notFoundEl = document.getElementById('notFound');
+  resultEl.classList.remove('show');
+  notFoundEl.classList.remove('show');
+  notFoundEl.innerHTML = '<div class="not-found-icon">⏳</div><p>กำลังค้นหาข้อมูล...</p>';
+  notFoundEl.classList.add('show');
 
-  // Show loading
-  document.getElementById('notFound').innerHTML = '<div class="not-found-icon">⏳</div><p>กำลังค้นหาข้อมูล...</p>';
-  document.getElementById('notFound').classList.add('show');
-
-  // Search localStorage first, then Google Sheets
-  const localData = loadData();
-  const localEntry = localData.find(d => d.serial.toLowerCase() === serial.toLowerCase());
-
-  if (localEntry) {
-    document.getElementById('notFound').classList.remove('show');
-    document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
-    showWarrantyResult(localEntry);
+  // 1) Check localStorage first
+  const local = loadData().find(d => d.serial.toLowerCase() === serial.toLowerCase());
+  if (local) {
+    notFoundEl.classList.remove('show');
+    notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+    showWarrantyResult(local);
     return;
   }
 
-  // Fetch from Google Sheets via Apps Script
-  fetch(SHEETS_URL + '?action=search&serial=' + encodeURIComponent(serial), { mode: 'no-cors' })
-    .then(() => {
-      // no-cors can't read response, fallback to direct sheet search via URL
-      return fetch('https://docs.google.com/spreadsheets/d/1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg/gviz/tq?tqx=out:json&sheet=warranties');
-    })
+  // 2) Fetch from Google Sheets via gviz
+  const SHEET_ID = '1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg';
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=warranties`;
+
+  fetch(url)
     .then(r => r.text())
     .then(text => {
-      const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
-      const rows = json.table.rows;
-      const cols = json.table.cols.map(c => c.label);
-      const serialIdx = cols.indexOf('serial');
-      const match = rows.find(r => r.c[serialIdx] && r.c[serialIdx].v && r.c[serialIdx].v.toLowerCase() === serial.toLowerCase());
-      document.getElementById('notFound').classList.remove('show');
-      document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+      // gviz returns: /*O_o*/
+google.visualization.Query.setResponse({...});
+      const clean = text.replace(/^[^\{]+/, '').replace(/\);?\s*$/, '');
+      const json = JSON.parse(clean);
+      const cols = json.table.cols.map(c => c.label || c.id);
+      const rows = json.table.rows || [];
+
+      const serialIdx = cols.findIndex(c => c.toLowerCase() === 'serial');
+      const match = rows.find(r => r.c[serialIdx] && String(r.c[serialIdx].v).toLowerCase() === serial.toLowerCase());
+
+      notFoundEl.classList.remove('show');
+      notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+
       if (!match) {
-        document.getElementById('notFound').classList.add('show');
+        notFoundEl.classList.add('show');
         return;
       }
-      // Map row to entry object
+
+      // Build entry object from row
       const entry = {};
-      cols.forEach((col, i) => { entry[col] = match.c[i] ? match.c[i].v : ''; });
-      // purchaseDate from sheet is DD/MM/YYYY, convert to YYYY-MM-DD
+      cols.forEach((col, i) => {
+        entry[col] = (match.c[i] && match.c[i].v !== null) ? String(match.c[i].v) : '';
+      });
+
+      // Convert purchaseDate DD/MM/YYYY → YYYY-MM-DD
       if (entry.purchaseDate && entry.purchaseDate.includes('/')) {
-        const parts = entry.purchaseDate.split('/');
-        entry.purchaseDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+        const [dd, mm, yyyy] = entry.purchaseDate.split('/');
+        entry.purchaseDate = `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
       }
+
       showWarrantyResult(entry);
     })
-    .catch(() => {
-      document.getElementById('notFound').classList.remove('show');
-      document.getElementById('notFound').innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
-      document.getElementById('notFound').classList.add('show');
+    .catch(err => {
+      console.error('Sheet fetch error:', err);
+      notFoundEl.classList.remove('show');
+      notFoundEl.innerHTML = '<div class="not-found-icon">🔍</div><p>ไม่พบข้อมูลการลงทะเบียนสำหรับ S/N นี้<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</p>';
+      notFoundEl.classList.add('show');
     });
 }
 
@@ -1187,14 +1189,12 @@ function showWarrantyResult(entry) {
   const pct = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100));
   const remaining = pct < 100;
 
-  // Status
   const banner = document.getElementById('statusBanner');
   banner.className = 'status-banner';
   const fill = document.getElementById('barFill');
   fill.className = 'progress-bar-fill';
 
   if (!remaining) {
-    // Expired
     banner.classList.add('expired');
     document.getElementById('statusIcon').textContent = '❌';
     document.getElementById('statusTitle').textContent = 'หมดระยะประกันแล้ว';
@@ -1203,7 +1203,6 @@ function showWarrantyResult(entry) {
     document.getElementById('res_remaining').textContent = 'หมดประกันแล้ว';
     document.getElementById('res_remaining').style.color = 'var(--red)';
   } else if (daysLeft <= 90) {
-    // Expiring soon
     banner.classList.add('soon');
     document.getElementById('statusIcon').textContent = '⚠️';
     document.getElementById('statusTitle').textContent = 'ใกล้หมดระยะประกัน';
@@ -1212,7 +1211,6 @@ function showWarrantyResult(entry) {
     document.getElementById('res_remaining').textContent = daysLeft + ' วัน';
     document.getElementById('res_remaining').style.color = '#b87a00';
   } else {
-    // Valid
     banner.classList.add('valid');
     document.getElementById('statusIcon').textContent = '✅';
     document.getElementById('statusTitle').textContent = 'อยู่ในระยะประกัน';
@@ -1224,14 +1222,12 @@ function showWarrantyResult(entry) {
     document.getElementById('res_remaining').style.color = 'var(--green)';
   }
 
-  // Bar
   setTimeout(() => { fill.style.width = pct + '%'; }, 50);
   document.getElementById('barStart').textContent = fmtDate(entry.purchaseDate);
   document.getElementById('barEnd').textContent = fmtDate(expiryDate.toISOString().slice(0,10));
   document.getElementById('barPct').textContent = Math.round(pct) + '% ใช้ไปแล้ว';
 
-  // Details
-  document.getElementById('res_product').textContent = entry.product;
+  document.getElementById('res_product').textContent = entry.product || entry.serial;
   document.getElementById('res_name').textContent = entry.name;
   document.getElementById('res_purchaseDate').textContent = fmtDate(entry.purchaseDate);
   document.getElementById('res_expiryDate').textContent = fmtDate(expiryDate.toISOString().slice(0,10));
