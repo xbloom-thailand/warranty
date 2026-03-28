@@ -814,31 +814,25 @@ function submitForm() {
 // ── Upload receipt to Google Drive via JSONP ──
 function uploadReceiptToDrive(entry, file) {
   const mimetype = file.dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-
-  // Use FormData POST — no custom headers = no CORS preflight = response readable
-  const formData = new FormData();
-  formData.append('action', 'uploadReceipt');
-  formData.append('filename', file.name);
-  formData.append('mimetype', mimetype);
-  formData.append('data', file.dataUrl);
+  const ext = file.name.split('.').pop() || 'jpg';
+  // ตั้งชื่อไฟล์เป็น S/N เพื่อให้หาใน Drive ได้ง่าย
+  const filename = 'receipt_' + entry.serial + '_' + entry.id + '.' + ext;
 
   fetch(SHEETS_URL, {
     method: 'POST',
-    body: formData
-  })
-  .then(r => r.json())
-  .then(res => {
-    if (res && res.result === 'success') {
-      entry.receiptDriveUrl = res.url;
-      entry.receiptDriveId = res.id;
-    }
-    sendToSheets(entry);
-  })
-  .catch(() => {
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({
+      action: 'uploadReceipt',
+      filename: filename,
+      mimetype: mimetype,
+      data: file.dataUrl
+    })
+  }).finally(() => {
+    entry.receiptName = filename;
     sendToSheets(entry);
   });
 }
-
 
 // ── Google Sheets sync ──
 function sendToSheets(entry) {
@@ -1372,8 +1366,9 @@ function getReceiptCell(d) {
   if (d.receiptDriveUrl) {
     return `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`;
   }
-  if (d.receiptName) {
-    return '<span style="color:var(--muted);font-size:12px">—</span>';
+  if (d.receiptName && d.receiptName.startsWith('receipt_')) {
+    const searchUrl = 'https://drive.google.com/drive/search?q=' + encodeURIComponent(d.receiptName);
+    return `<a href="${searchUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`;
   }
   return '<span style="color:var(--muted)">—</span>';
 }
