@@ -19,7 +19,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 10
 .header-logo { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: 0.04em; color: var(--text); }
 .header-divider { width: 1px; height: 14px; background: var(--border); }
 .header-region { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
-.admin-btn { font-size: 11px; color: var(--muted); padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .2s; background: none; font-family: 'DM Sans', sans-serif; }
+.admin-btn { font-size: 11px; color: var(--bg); padding: 5px 12px; border: 1px solid var(--bg); border-radius: 8px; cursor: pointer; background: var(--bg); font-family: 'DM Sans', sans-serif; user-select: none; }
 .admin-btn:hover { color: var(--text); border-color: var(--accent); }
 
 .card { width: 100%; max-width: 420px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 28px 24px 32px; }
@@ -672,7 +672,7 @@ tr.highlight td { background: #fffbea !important; }
 <script>
 const STORAGE_KEY = 'xbloom_warranties';
 const PRODUCTS_KEY = 'xbloom_products';
-const ADMIN_PW = 'xbloom2025';
+const ADMIN_PW = null; // password verified server-side
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzd73NR4pQYVeDSkX-G9RKVlqfUaOyc3QYyDVrE6WDxI3M4ZdxAzEMWmC7qcFLTVDVu/exec';
 
 
@@ -780,8 +780,12 @@ function submitForm() {
   };
   const data = loadData(); data.push(entry); saveData(data);
 
-  // ── Send to Google Sheets ──
-  sendToSheets(entry);
+  // ── Upload receipt to Drive first, then send to Sheets ──
+  if (uploadedFile && uploadedFile.dataUrl) {
+    uploadReceiptToDrive(entry, uploadedFile);
+  } else {
+    sendToSheets(entry);
+  }
 
   // Compute expiry date (2 years from purchase)
   const purchaseDt = new Date(entry.purchaseDate + 'T00:00:00');
@@ -801,6 +805,49 @@ function submitForm() {
   ['d1','d2','d3'].forEach(id => { document.getElementById(id).className = 'dot done'; });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
+}
+
+
+// ── Upload receipt to Google Drive via JSONP ──
+function uploadReceiptToDrive(entry, file) {
+  const callbackName = 'uploadCallback_' + Date.now();
+  const script = document.createElement('script');
+  const base64data = file.dataUrl.split(',')[1] || file.dataUrl;
+  const mimetype = file.dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+
+  const timeout = setTimeout(() => {
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    sendToSheets(entry); // fallback: send without drive URL
+  }, 15000);
+
+  window[callbackName] = function(res) {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    if (res && res.result === 'success') {
+      entry.receiptDriveUrl = res.url;
+      entry.receiptDriveId = res.id;
+      // Update localStorage entry with drive URL
+      const allData = loadData();
+      const idx = allData.findIndex(d => d.id === entry.id);
+      if (idx >= 0) { allData[idx].receiptDriveUrl = res.url; saveData(allData); }
+    }
+    sendToSheets(entry);
+  };
+
+  script.src = SHEETS_URL
+    + '?action=uploadReceipt'
+    + '&filename=' + encodeURIComponent(file.name)
+    + '&mimetype=' + encodeURIComponent(mimetype)
+    + '&data=' + encodeURIComponent(base64data)
+    + '&callback=' + callbackName;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    sendToSheets(entry);
+  };
+  document.body.appendChild(script);
 }
 
 
@@ -955,13 +1002,41 @@ function openAdmin() {
 }
 function closeModal() { document.getElementById('pwModal').classList.remove('open'); }
 function checkPw() {
-  if (document.getElementById('pwInput').value === ADMIN_PW) {
-    closeModal(); showAdmin();
-  } else {
+  const pw = document.getElementById('pwInput').value;
+  const btn = document.querySelector('.modal-confirm');
+  btn.textContent = 'กำลังตรวจสอบ...';
+  btn.disabled = true;
+
+  const callbackName = 'loginCallback_' + Date.now();
+  const script = document.createElement('script');
+  const timeout = setTimeout(() => {
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    btn.textContent = 'เข้าสู่ระบบ'; btn.disabled = false;
+    document.getElementById('pwErr').textContent = 'เชื่อมต่อไม่ได้ กรุณาลองใหม่';
     document.getElementById('pwErr').style.display = 'block';
-    document.getElementById('pwInput').value = '';
-    document.getElementById('pwInput').focus();
-  }
+  }, 10000);
+
+  window[callbackName] = function(res) {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    btn.textContent = 'เข้าสู่ระบบ'; btn.disabled = false;
+    if (res && res.result === 'ok') {
+      closeModal(); showAdmin();
+    } else {
+      document.getElementById('pwErr').textContent = 'รหัสผ่านไม่ถูกต้อง';
+      document.getElementById('pwErr').style.display = 'block';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwInput').focus();
+    }
+  };
+  script.src = SHEETS_URL + '?action=login&password=' + encodeURIComponent(pw) + '&callback=' + callbackName;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    btn.textContent = 'เข้าสู่ระบบ'; btn.disabled = false;
+  };
+  document.body.appendChild(script);
 }
 function showAdmin() {
   document.getElementById('formCard').style.display = 'none';
@@ -1056,7 +1131,7 @@ function renderAdminWithData(data) {
       <td style="white-space:nowrap">${d.phone||'—'}</td>
       <td>${d.email||'—'}</td>
       <td style="font-size:12px;max-width:200px">${d.address||'—'}</td>
-      <td>${d.receiptName||d.receipt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${d.receiptDriveUrl ? `<a href="${d.receiptDriveUrl}" target="_blank" style="color:var(--green);font-size:12px;text-decoration:none;">🖼 ดูรูป</a>` : (d.receiptName||d.receipt ? '<span style="color:var(--muted);font-size:12px">อัปโหลดแล้ว</span>' : '<span style="color:var(--muted)">—</span>')}</td>
       <td><span class="badge badge-green">${d.status||'ลงทะเบียนแล้ว'}</span></td>
       <td><button class="del-btn" onclick="deleteEntry('${d.id}')" title="ลบรายการนี้">🗑</button></td>
     </tr>
@@ -1096,36 +1171,47 @@ function dl(content, filename, type) {
 function ds() { return new Date().toISOString().slice(0,10).replace(/-/g,''); }
 
 function clearAll() {
-  if (confirm('ลบข้อมูลทั้งหมด?\nการกระทำนี้ไม่สามารถย้อนกลับได้')) {
-    localStorage.removeItem(STORAGE_KEY);
-    renderAdmin();
-  }
+  const pw = prompt('กรุณาพิมพ์รหัสยืนยันเพื่อลบข้อมูลทั้งหมด:');
+  if (!pw) return;
+  const callbackName = 'delAllCallback_' + Date.now();
+  const script = document.createElement('script');
+  window[callbackName] = function(res) {
+    delete window[callbackName];
+    if (document.body.contains(script)) document.body.removeChild(script);
+    if (res.result === 'unauthorized') { alert('รหัสยืนยันไม่ถูกต้อง'); return; }
+    if (res.result === 'success') { localStorage.removeItem(STORAGE_KEY); renderAdmin(); }
+  };
+  script.src = SHEETS_URL + '?action=deleteall&delpw=' + encodeURIComponent(pw) + '&callback=' + callbackName;
+  document.body.appendChild(script);
 }
 
 function deleteEntry(id) {
-  if (!confirm('ลบรายการนี้หรือไม่?')) return;
-  // Animate row out
+  const pw = prompt('กรุณาพิมพ์รหัสยืนยันเพื่อลบรายการนี้:');
+  if (!pw) return;
   const row = document.getElementById('row_' + id);
   if (row) {
     row.style.transition = 'opacity .25s, transform .25s';
     row.style.opacity = '0';
     row.style.transform = 'translateX(16px)';
   }
-  // Delete from localStorage
-  const data = loadData().filter(d => String(d.id) !== String(id));
-  saveData(data);
-  // Delete from Sheets via JSONP
   const callbackName = 'deleteCallback_' + Date.now();
   const script = document.createElement('script');
   window[callbackName] = function(res) {
     delete window[callbackName];
     if (document.body.contains(script)) document.body.removeChild(script);
+    if (res.result === 'unauthorized') {
+      alert('รหัสยืนยันไม่ถูกต้อง');
+      if (row) { row.style.opacity = '1'; row.style.transform = ''; }
+      return;
+    }
+    const data = loadData().filter(d => String(d.id) !== String(id));
+    saveData(data);
     setTimeout(() => renderAdmin(), 300);
   };
-  script.src = SHEETS_URL + '?action=delete&id=' + encodeURIComponent(id) + '&callback=' + callbackName;
+  script.src = SHEETS_URL + '?action=delete&id=' + encodeURIComponent(id) + '&delpw=' + encodeURIComponent(pw) + '&callback=' + callbackName;
   script.onerror = function() {
     delete window[callbackName];
-    setTimeout(() => renderAdmin(), 300);
+    if (row) { row.style.opacity = '1'; row.style.transform = ''; }
   };
   document.body.appendChild(script);
 }
