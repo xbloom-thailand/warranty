@@ -334,7 +334,7 @@ tr.highlight td { background: #fffbea !important; }
 
     <div class="field">
       <label>หมายเลขซีเรียล S/N <span class="req">*</span></label>
-      <input type="text" id="f_serial" placeholder="เช่น J15N012321312321312" />
+      <input type="text" id="f_serial" placeholder="เช่น J15A01B4BS000" />
       <div class="error-msg" id="e_serial">กรุณากรอกหมายเลข S/N</div>
     </div>
 
@@ -1366,7 +1366,7 @@ function getReceiptCell(d) {
   if (d.receiptDriveUrl) {
     return `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`;
   }
-  if (d.receiptName && d.receiptName.startsWith('receipt_')) {
+  if (d.receiptName && d.receiptName.trim() !== '') {
     return `<a href="${DRIVE_FOLDER_URL}" target="_blank" class="view-receipt-btn" title="${d.receiptName}">🖼 ดูรูป</a>`;
   }
   return '<span style="color:var(--muted)">—</span>';
