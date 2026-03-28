@@ -1131,9 +1131,19 @@ function renderAdminWithData(data) {
       <td style="white-space:nowrap">${d.phone||'—'}</td>
       <td>${d.email||'—'}</td>
       <td style="font-size:12px;max-width:200px">${d.address||'—'}</td>
-      <td>${d.receiptDriveUrl ? `<a href="${d.receiptDriveUrl}" target="_blank" style="color:var(--green);font-size:12px;text-decoration:none;">🖼 ดูรูป</a>` : (d.receiptName||d.receipt ? '<span style="color:var(--muted);font-size:12px">อัปโหลดแล้ว</span>' : '<span style="color:var(--muted)">—</span>')}</td>
+      <td>
+        ${d.receiptDriveUrl
+          ? `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`
+          : d.receiptData
+            ? `<button class="view-receipt-btn" onclick="viewLocalReceipt('${d.id}')">🖼 ดูรูป</button>`
+            : '<span style="color:var(--muted)">—</span>'
+        }
+      </td>
       <td><span class="badge badge-green">${d.status||'ลงทะเบียนแล้ว'}</span></td>
-      <td><button class="del-btn" onclick="deleteEntry('${d.id}')" title="ลบรายการนี้">🗑</button></td>
+      <td style="white-space:nowrap;display:flex;gap:5px;padding:8px 14px">
+        <button class="edit-btn" onclick="openEditModal('${d.id}')" title="แก้ไข">✏️</button>
+        <button class="del-btn" onclick="deleteEntry('${d.id}')" title="ลบ">🗑</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -1358,6 +1368,20 @@ function showWarrantyResult(entry) {
 }
 
 
+
+// ── View local receipt (base64) ──
+function viewLocalReceipt(id) {
+  const data = loadData();
+  const entry = data.find(d => String(d.id) === String(id));
+  if (!entry || !entry.receiptData) return;
+  document.getElementById('receiptModalImg').src = entry.receiptData;
+  document.getElementById('receiptModalTitle').textContent = '📄 ' + (entry.receiptName || 'ใบเสร็จ') + ' — ' + entry.name;
+  const dl = document.getElementById('receiptDownloadBtn');
+  dl.href = entry.receiptData;
+  dl.download = entry.receiptName || 'receipt.jpg';
+  document.getElementById('receiptModal').classList.add('open');
+}
+
 // ── Receipt Viewer ──
 function viewReceipt(id) {
   const data = loadData();
@@ -1395,23 +1419,31 @@ function filterTable(q) {
 
 // ── Edit Modal ──
 function openEditModal(id) {
-  const data = loadData();
-  const d = data.find(x => x.id === id);
-  if (!d) return;
-  document.getElementById('edit_id').value = d.id;
-  document.getElementById('edit_serial').value = d.serial || '';
-  document.getElementById('edit_product').value = d.product || '';
-  document.getElementById('edit_company').value = d.company || '';
-  document.getElementById('edit_purchaseDate').value = d.purchaseDate || '';
-  document.getElementById('edit_name').value = d.name || '';
-  document.getElementById('edit_phone').value = d.phone || '';
-  document.getElementById('edit_email').value = d.email || '';
-  document.getElementById('edit_houseNo').value = d.houseNo || '';
-  document.getElementById('edit_building').value = d.building || '';
-  document.getElementById('edit_subdistrict').value = d.subdistrict || '';
-  document.getElementById('edit_district').value = d.district || '';
-  document.getElementById('edit_province').value = d.province || '';
-  document.getElementById('edit_postal').value = d.postal || '';
+  // Search in sheet data first, then localStorage
+  const allData = window._adminData || loadData();
+  const entry = allData.find(d => String(d.id) === String(id));
+  if (!entry) return;
+  window._editingId = id;
+  window._editingEntry = entry;
+  document.getElementById('edit_serial').value = entry.serial || '';
+  document.getElementById('edit_product').value = entry.product || '';
+  document.getElementById('edit_company').value = entry.company || '';
+  // purchaseDate: handle both YYYY-MM-DD and DD/MM/YYYY
+  let pd = entry.purchaseDate || '';
+  if (pd.includes('/')) {
+    const parts = pd.split('/');
+    pd = parts[2] + '-' + parts[1].padStart(2,'0') + '-' + parts[0].padStart(2,'0');
+  }
+  document.getElementById('edit_purchasedate').value = pd;
+  document.getElementById('edit_name').value = entry.name || '';
+  document.getElementById('edit_phone').value = entry.phone || '';
+  document.getElementById('edit_email').value = entry.email || '';
+  document.getElementById('edit_houseno').value = entry.houseNo || '';
+  document.getElementById('edit_building').value = entry.building || '';
+  document.getElementById('edit_subdistrict').value = entry.subdistrict || '';
+  document.getElementById('edit_district').value = entry.district || '';
+  document.getElementById('edit_province').value = entry.province || '';
+  document.getElementById('edit_postal').value = entry.postal || '';
   document.getElementById('editModal').classList.add('open');
 }
 
