@@ -1053,50 +1053,33 @@ function closeAdmin() {
 function renderAdmin() {
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
 
-  // Use gviz JSONP — same origin as checkWarranty, bypasses CORS
-  const callbackName = 'gvizAdmin_' + Date.now();
-  const script = document.createElement('script');
-  let done = false;
+  const url = 'https://docs.google.com/spreadsheets/d/1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg/gviz/tq?tqx=out:json&sheet=warranties&t=' + Date.now();
 
-  const timeout = setTimeout(() => {
-    if (done) return; done = true;
-    delete window[callbackName];
-    if (document.body.contains(script)) document.body.removeChild(script);
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ กรุณาลองใหม่</div></td></tr>';
-    document.getElementById('adminStats').innerHTML = '<div class="stat-card"><div class="stat-num">—</div><div class="stat-label">ทั้งหมด</div></div>';
-  }, 15000);
-
-  window[callbackName] = function(response) {
-    if (done) return; done = true;
-    clearTimeout(timeout);
-    delete window[callbackName];
-    if (document.body.contains(script)) document.body.removeChild(script);
-    try {
-      const table = response.table;
-      const cols = table.cols.map(c => c.label || c.id);
-      const rows = table.rows || [];
+  fetch(url)
+    .then(r => r.text())
+    .then(text => {
+      // Same parsing as checkWarranty
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}');
+      const json = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+      const cols = json.table.cols.map(c => c.label || c.id);
+      const rows = json.table.rows || [];
       const data = rows
         .filter(r => r.c && r.c[0] && r.c[0].v)
         .map(r => {
           const row = {};
-          cols.forEach((h, j) => { row[h] = (r.c[j] && r.c[j].v !== null) ? String(r.c[j].v) : ''; });
+          cols.forEach((h, j) => {
+            row[h] = (r.c[j] && r.c[j].v !== null) ? String(r.c[j].v) : '';
+          });
           return row;
         });
       renderAdminWithData(data);
-    } catch(e) {
-      document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';
-    }
-  };
-
-  script.onerror = function() {
-    if (done) return; done = true;
-    clearTimeout(timeout);
-    delete window[callbackName];
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ</div></td></tr>';
-  };
-
-  script.src = 'https://docs.google.com/spreadsheets/d/1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg/gviz/tq?tqx=out:json;responseHandler:' + callbackName + '&sheet=warranties&t=' + Date.now();
-  document.body.appendChild(script);
+    })
+    .catch(err => {
+      console.error('Admin fetch error:', err);
+      document.getElementById('tableBody').innerHTML = `<tr><td colspan="13"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ (${err.message}) <button onclick="renderAdmin()" style="margin-left:8px;padding:4px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:#fff">ลองใหม่</button></div></td></tr>`;
+      document.getElementById('adminStats').innerHTML = '';
+    });
 }
 
 
