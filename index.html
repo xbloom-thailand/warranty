@@ -674,6 +674,8 @@ const STORAGE_KEY = 'xbloom_warranties';
 const PRODUCTS_KEY = 'xbloom_products';
 const ADMIN_PW = null; // password verified server-side
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzd73NR4pQYVeDSkX-G9RKVlqfUaOyc3QYyDVrE6WDxI3M4ZdxAzEMWmC7qcFLTVDVu/exec';
+const DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1r5sL4IMt6qBMzzuPI5hlqWNqvFuA72Qp';
+const DRIVE_FOLDER_NAME = 'xBloom Warranty Receipts';
 
 
 
@@ -1051,35 +1053,55 @@ function closeAdmin() {
   document.getElementById('tab_check').classList.remove('active');
 }
 function renderAdmin() {
+  // Show cached data immediately if available
+  if (window._adminData && window._adminData.length > 0) {
+    renderAdminWithData(window._adminData);
+    // Refresh in background silently
+    refreshAdminData();
+    return;
+  }
+  // First load — show spinner and fetch
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
+  refreshAdminData();
+}
 
-  const url = 'https://docs.google.com/spreadsheets/d/1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg/gviz/tq?tqx=out:json&sheet=warranties&t=' + Date.now();
+function refreshAdminData() {
+  const cbName = 'adminCb_' + Date.now();
+  const s = document.createElement('script');
+  let done = false;
 
-  fetch(url)
-    .then(r => r.text())
-    .then(text => {
-      // Same parsing as checkWarranty
-      const jsonStart = text.indexOf('{');
-      const jsonEnd = text.lastIndexOf('}');
-      const json = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-      const cols = json.table.cols.map(c => c.label || c.id);
-      const rows = json.table.rows || [];
-      const data = rows
-        .filter(r => r.c && r.c[0] && r.c[0].v)
-        .map(r => {
-          const row = {};
-          cols.forEach((h, j) => {
-            row[h] = (r.c[j] && r.c[j].v !== null) ? String(r.c[j].v) : '';
-          });
-          return row;
-        });
-      renderAdminWithData(data);
-    })
-    .catch(err => {
-      console.error('Admin fetch error:', err);
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="13"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ (${err.message}) <button onclick="renderAdmin()" style="margin-left:8px;padding:4px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:#fff">ลองใหม่</button></div></td></tr>`;
+  const timer = setTimeout(() => {
+    if (done) return; done = true;
+    delete window[cbName];
+    if (document.body.contains(s)) document.body.removeChild(s);
+    // Only show error if we have no data at all
+    if (!window._adminData || window._adminData.length === 0) {
+      document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ หมดเวลา <button onclick="renderAdmin()" style="margin-left:8px;padding:4px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer;background:#fff">ลองใหม่</button></div></td></tr>';
       document.getElementById('adminStats').innerHTML = '';
-    });
+    }
+  }, 25000);
+
+  window[cbName] = function(res) {
+    if (done) return; done = true;
+    clearTimeout(timer);
+    delete window[cbName];
+    if (document.body.contains(s)) document.body.removeChild(s);
+    if (res && res.result === 'success' && Array.isArray(res.data)) {
+      renderAdminWithData(res.data);
+    }
+  };
+
+  s.onerror = function() {
+    if (done) return; done = true;
+    clearTimeout(timer);
+    delete window[cbName];
+    if (!window._adminData || window._adminData.length === 0) {
+      document.getElementById('tableBody').innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ <button onclick="renderAdmin()" style="margin-left:8px;padding:4px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer;background:#fff">ลองใหม่</button></div></td></tr>';
+    }
+  };
+
+  s.src = SHEETS_URL + '?action=getall&callback=' + cbName + '&t=' + Date.now();
+  document.body.appendChild(s);
 }
 
 
@@ -1111,26 +1133,36 @@ function renderAdminWithData(data) {
     tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">${q ? '🔍 ไม่พบข้อมูลที่ค้นหา' : '⚠ ยังไม่มีข้อมูลการลงทะเบียน'}</div></td></tr>`;
     return;
   }
-  tbody.innerHTML = [...filtered].reverse().map((d, i) => `
-    <tr id="row_${d.id}">
-      <td>${filtered.length - i}</td>
-      <td style="white-space:nowrap;font-size:12px">${d.registeredAt ? new Date(d.registeredAt).toLocaleDateString('th-TH') : '—'}<br><span style="color:var(--muted)">${d.registeredAt ? new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : ''}</span></td>
-      <td style="font-family:monospace;font-size:12px">${d.serial||'—'}</td>
-      <td>${d.product||'—'}</td>
-      <td>${d.company||'—'}</td>
-      <td style="white-space:nowrap">${d.purchaseDate ? (d.purchaseDate.includes('/') ? d.purchaseDate : fmtDate(d.purchaseDate)) : '—'}</td>
-      <td>${d.name||'—'}</td>
-      <td style="white-space:nowrap">${d.phone||'—'}</td>
-      <td>${d.email||'—'}</td>
-      <td style="font-size:12px;max-width:200px">${d.address||'—'}</td>
-      <td>${getReceiptCell(d)}</td>
-      <td><span class="badge badge-green">${d.status||'ลงทะเบียนแล้ว'}</span></td>
-      <td style="white-space:nowrap;display:flex;gap:5px;padding:8px 14px">
-        <button class="edit-btn" onclick="openEditModal('${d.id}')" title="แก้ไข">✏️</button>
-        <button class="del-btn" onclick="deleteEntry('${d.id}')" title="ลบ">🗑</button>
-      </td>
-    </tr>
-  `).join('');
+  try {
+    tbody.innerHTML = [...filtered].reverse().map((d, i) => {
+      const receiptCell = (d.receiptName && d.receiptName.trim())
+        ? '<a href="' + DRIVE_FOLDER_URL + '" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>'
+        : '<span style="color:var(--muted)">—</span>';
+      const dateStr = d.registeredAt ? new Date(d.registeredAt).toLocaleDateString('th-TH') : '—';
+      const timeStr = d.registeredAt ? new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '';
+      const pdStr = d.purchaseDate ? (d.purchaseDate.includes('/') ? d.purchaseDate : fmtDate(d.purchaseDate)) : '—';
+      return '<tr id="row_' + d.id + '">'
+        + '<td>' + (filtered.length - i) + '</td>'
+        + '<td style="white-space:nowrap;font-size:12px">' + dateStr + '<br><span style="color:var(--muted)">' + timeStr + '</span></td>'
+        + '<td style="font-family:monospace;font-size:12px">' + (d.serial||'—') + '</td>'
+        + '<td>' + (d.product||'—') + '</td>'
+        + '<td>' + (d.company||'—') + '</td>'
+        + '<td style="white-space:nowrap">' + pdStr + '</td>'
+        + '<td>' + (d.name||'—') + '</td>'
+        + '<td style="white-space:nowrap">' + (d.phone||'—') + '</td>'
+        + '<td>' + (d.email||'—') + '</td>'
+        + '<td style="font-size:12px;max-width:200px">' + (d.address||'—') + '</td>'
+        + '<td>' + receiptCell + '</td>'
+        + '<td><span class="badge badge-green">' + (d.status||'ลงทะเบียนแล้ว') + '</span></td>'
+        + '<td style="white-space:nowrap">'
+        + '<button class="edit-btn" onclick="openEditModal(\'' + d.id + '\')" title="แก้ไข">✏️</button> '
+        + '<button class="del-btn" onclick="deleteEntry(\'' + d.id + '\')" title="ลบ">🗑</button>'
+        + '</td></tr>';
+    }).join('');
+  } catch(err) {
+    console.error('Table render error:', err);
+    tbody.innerHTML = '<tr><td colspan="13"><div class="empty-state">⚠ แสดงข้อมูลไม่สำเร็จ: ' + err.message + '</div></td></tr>';
+  }
 }
 
 
@@ -1360,11 +1392,8 @@ function showWarrantyResult(entry) {
 
 // ── Receipt cell helper ──
 function getReceiptCell(d) {
-  if (d.receiptDriveUrl) {
-    return `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`;
-  }
   if (d.receiptName && d.receiptName.trim() !== '') {
-    return `<a href="${DRIVE_FOLDER_URL}" target="_blank" class="view-receipt-btn" title="${d.receiptName}">🖼 ดูรูป</a>`;
+    return '<a href="' + DRIVE_FOLDER_URL + '" target="_blank" class="view-receipt-btn" title="' + d.receiptName + '">🖼 ดูรูป</a>';
   }
   return '<span style="color:var(--muted)">—</span>';
 }
