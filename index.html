@@ -539,120 +539,38 @@ tr.highlight td { background: #fffbea !important; }
 
 <!-- Edit Modal -->
 <div class="modal-overlay" id="editModal">
-  <div class="modal" style="width:480px;max-width:95vw;max-height:88vh;overflow-y:auto">
-    <h3 style="margin-bottom:16px">✏️ แก้ไขข้อมูล</h3>
-    <input type="hidden" id="edit_id" />
-    <div style="display:grid;gap:10px">
-      <div class="field"><label>S/N <span class="req">*</span></label><input type="text" id="edit_serial" /></div>
-      <div class="field"><label>สินค้า <span class="req">*</span></label>
-        <div class="select-wrap">
-          <select id="edit_product">
-            <option value="xBloom Studio Midnight Black">xBloom Studio Midnight Black</option>
-            <option value="xBloom Studio Moonlight White">xBloom Studio Moonlight White</option>
-            <option value="xBloom Studio Sage Green (Green Knob)">xBloom Studio Sage Green (Green Knob)</option>
-            <option value="xBloom Studio Sage Green (Gold Knob)">xBloom Studio Sage Green (Gold Knob)</option>
-            <option value="xBloom Studio Twilight">xBloom Studio Twilight</option>
-          </select>
-        </div>
-      </div>
-      <div class="field"><label>บริษัท <span class="req">*</span></label><input type="text" id="edit_company" /></div>
-      <div class="field"><label>วันที่ซื้อ <span class="req">*</span></label><input type="date" id="edit_purchaseDate" /></div>
-      <div class="field"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="edit_name" /></div>
-      <div class="field"><label>เบอร์โทร <span class="req">*</span></label><input type="tel" id="edit_phone" /></div>
-      <div class="field"><label>อีเมล <span class="req">*</span></label><input type="email" id="edit_email" /></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>เลขที่</label><input type="text" id="edit_houseNo" /></div>
-        <div class="field"><label>ตึก/ซอย</label><input type="text" id="edit_building" /></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>แขวง/ตำบล</label><input type="text" id="edit_subdistrict" /></div>
-        <div class="field"><label>เขต/อำเภอ</label><input type="text" id="edit_district" /></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>จังหวัด</label><input type="text" id="edit_province" /></div>
-        <div class="field"><label>รหัสไปรษณีย์</label><input type="text" id="edit_postal" /></div>
-      </div>
+  <div class="modal" style="width:480px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <h3>✏️ แก้ไขข้อมูล</h3>
+    <div class="field"><label>S/N <span class="req">*</span></label><input type="text" id="edit_serial" /></div>
+    <div class="field"><label>ชื่อสินค้า <span class="req">*</span></label>
+      <div class="select-wrap"><select id="edit_product"></select></div>
     </div>
-    <div class="modal-btns" style="margin-top:18px">
+    <div class="field"><label>บริษัท <span class="req">*</span></label><input type="text" id="edit_company" /></div>
+    <div class="field"><label>วันที่ซื้อ <span class="req">*</span></label><input type="date" id="edit_purchasedate" /></div>
+    <div class="field"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="edit_name" /></div>
+    <div class="field"><label>เบอร์โทร <span class="req">*</span></label><input type="tel" id="edit_phone" /></div>
+    <div class="field"><label>อีเมล <span class="req">*</span></label><input type="email" id="edit_email" /></div>
+    <div class="row2">
+      <div class="field"><label>เลขที่</label><input type="text" id="edit_houseno" /></div>
+      <div class="field"><label>ตึก/ซอย</label><input type="text" id="edit_building" /></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>แขวง/ตำบล</label><input type="text" id="edit_subdistrict" /></div>
+      <div class="field"><label>เขต/อำเภอ</label><input type="text" id="edit_district" /></div>
+    </div>
+    <div class="field"><label>จังหวัด</label><input type="text" id="edit_province" /></div>
+    <div class="field"><label>รหัสไปรษณีย์</label><input type="text" id="edit_postal" /></div>
+    <div class="modal-btns" style="margin-top:16px">
       <button class="modal-cancel" onclick="closeEditModal()">ยกเลิก</button>
       <button class="modal-confirm" onclick="saveEdit()">💾 บันทึก</button>
     </div>
   </div>
 </div>
+
 
 
 <!-- Edit Modal -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal" style="width:420px;max-width:95vw;max-height:90vh;overflow-y:auto">
-    <h3 style="margin-bottom:16px">✏️ แก้ไขข้อมูล</h3>
-    <input type="hidden" id="edit_id" />
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">S/N</label>
-      <input type="text" id="edit_serial" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">สินค้า</label>
-      <div style="position:relative">
-        <select id="edit_product" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;appearance:none;background:#fafaf8">
-          <option value="xBloom Studio Midnight Black">xBloom Studio Midnight Black</option>
-          <option value="xBloom Studio Moonlight White">xBloom Studio Moonlight White</option>
-          <option value="xBloom Studio Sage Green (Green Knob)">xBloom Studio Sage Green (Green Knob)</option>
-          <option value="xBloom Studio Sage Green (Gold Knob)">xBloom Studio Sage Green (Gold Knob)</option>
-          <option value="xBloom Studio Twilight">xBloom Studio Twilight</option>
-        </select>
-        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#888;font-size:12px">▾</span>
-      </div>
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">บริษัท</label>
-      <input type="text" id="edit_company" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">วันที่ซื้อ</label>
-      <input type="date" id="edit_purchaseDate" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">ชื่อ-นามสกุล</label>
-      <input type="text" id="edit_name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">โทรศัพท์</label>
-      <input type="text" id="edit_phone" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">อีเมล</label>
-      <input type="email" id="edit_email" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="field" style="margin-bottom:0">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">เลขที่</label>
-        <input type="text" id="edit_houseNo" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">ตึก/ซอย</label>
-        <input type="text" id="edit_building" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="field" style="margin-bottom:0">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">แขวง/ตำบล</label>
-        <input type="text" id="edit_subdistrict" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">เขต/อำเภอ</label>
-        <input type="text" id="edit_district" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-      </div>
-    </div>
-    <div class="field" style="margin-bottom:16px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">จังหวัด</label>
-      <input type="text" id="edit_province" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none" />
-    </div>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeEditModal()">ยกเลิก</button>
-      <button class="modal-confirm" onclick="saveEdit()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- Receipt Image Modal -->
 <div class="receipt-modal-overlay" id="receiptModal" onclick="closeReceiptModal()">
@@ -1106,6 +1024,25 @@ function refreshAdminData() {
 
 
 function renderAdminWithData(data) {
+  // Normalize date fields from Apps Script/Sheets
+  data = data.map(d => {
+    const normalizeDate = (val) => {
+      if (!val) return '';
+      const s = String(val);
+      // Already DD/MM/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return fmtDate(s);
+      // Date string like "Sat Mar 28 2026..."
+      const dt = new Date(s);
+      if (!isNaN(dt)) return fmtDate(dt.toISOString().slice(0,10));
+      return s;
+    };
+    return Object.assign({}, d, {
+      purchaseDate: normalizeDate(d.purchaseDate),
+      expiryDate: normalizeDate(d.expiryDate),
+    });
+  });
   window._adminData = data; // store for export
   const q = (document.getElementById('adminSearch') ? document.getElementById('adminSearch').value : '').toLowerCase().trim();
   const filtered = q ? data.filter(d =>
@@ -1140,7 +1077,13 @@ function renderAdminWithData(data) {
         : '<span style="color:var(--muted)">—</span>';
       const dateStr = d.registeredAt ? new Date(d.registeredAt).toLocaleDateString('th-TH') : '—';
       const timeStr = d.registeredAt ? new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '';
-      const pdStr = d.purchaseDate ? (d.purchaseDate.includes('/') ? d.purchaseDate : fmtDate(d.purchaseDate)) : '—';
+      let pdStr = '—';
+      if (d.purchaseDate) {
+        const pd = String(d.purchaseDate);
+        if (pd.includes('/')) { pdStr = pd; }
+        else if (pd.includes('-')) { pdStr = fmtDate(pd); }
+        else { pdStr = pd; }
+      }
       return '<tr id="row_' + d.id + '">'
         + '<td>' + (filtered.length - i) + '</td>'
         + '<td style="white-space:nowrap;font-size:12px">' + dateStr + '<br><span style="color:var(--muted)">' + timeStr + '</span></td>'
@@ -1437,14 +1380,21 @@ function filterTable(q) {
 
 // ── Edit Modal ──
 function openEditModal(id) {
+  const pw = prompt('กรุณาพิมพ์รหัสยืนยันเพื่อแก้ไขข้อมูล:');
+  if (!pw || pw.trim() !== 'adminaccessonly') { if (pw !== null) alert('รหัสไม่ถูกต้อง'); return; }
   // Search in sheet data first, then localStorage
   const allData = window._adminData || loadData();
-  const entry = allData.find(d => String(d.id) === String(id));
-  if (!entry) return;
+  // Also check registeredAt as fallback key since id may vary
+  let entry = allData.find(d => String(d.id) === String(id));
+  if (!entry) {
+    // Try numeric comparison
+    entry = allData.find(d => d.id == id);
+  }
+  if (!entry) { alert('ไม่พบข้อมูล (id: ' + id + ')'); return; }
   window._editingId = id;
   window._editingEntry = entry;
   document.getElementById('edit_serial').value = entry.serial || '';
-  document.getElementById('edit_product').value = entry.product || '';
+  renderProductSelect('edit_product', entry.product || '');
   document.getElementById('edit_company').value = entry.company || '';
   // purchaseDate: handle both YYYY-MM-DD and DD/MM/YYYY
   let pd = entry.purchaseDate || '';
@@ -1470,96 +1420,67 @@ function closeEditModal() {
 }
 
 function saveEdit() {
-  const id = Number(document.getElementById('edit_id').value);
-  const data = loadData();
-  const idx = data.findIndex(x => x.id === id);
-  if (idx === -1) return;
+  const id = window._editingId;
+  const entry = window._editingEntry;
+  if (!id || !entry) return;
 
-  const houseNo      = document.getElementById('edit_houseNo').value.trim();
-  const building     = document.getElementById('edit_building').value.trim();
-  const subdistrict  = document.getElementById('edit_subdistrict').value.trim();
-  const district     = document.getElementById('edit_district').value.trim();
-  const province     = document.getElementById('edit_province').value.trim();
-  const postal       = document.getElementById('edit_postal').value.trim();
-  const address = [houseNo, building, subdistrict ? 'แขวง'+subdistrict : '', district ? 'เขต'+district : '', province, postal].filter(Boolean).join(' ');
-
-  data[idx] = {
-    ...data[idx],
-    serial:      document.getElementById('edit_serial').value.trim(),
-    product:     document.getElementById('edit_product').value,
-    company:     document.getElementById('edit_company').value.trim(),
-    purchaseDate: document.getElementById('edit_purchaseDate').value,
-    name:        document.getElementById('edit_name').value.trim(),
-    phone:       document.getElementById('edit_phone').value.trim(),
-    email:       document.getElementById('edit_email').value.trim(),
-    houseNo, building, subdistrict, district, province, postal, address,
-  };
-
-  saveData(data);
-  closeEditModal();
-  // Preserve search query after re-render
-  const q = document.getElementById('adminSearch').value;
-  renderAdmin();
-  if (q) { document.getElementById('adminSearch').value = q; filterTable(q); }
-}
-
-
-// ── Edit Modal ──
-function openEditModal(id) {
-  const data = loadData();
-  const d = data.find(x => x.id === id);
-  if (!d) return;
-  document.getElementById('edit_id').value = d.id;
-  document.getElementById('edit_serial').value = d.serial || '';
-  document.getElementById('edit_product').value = d.product || '';
-  document.getElementById('edit_company').value = d.company || '';
-  document.getElementById('edit_purchaseDate').value = d.purchaseDate || '';
-  document.getElementById('edit_name').value = d.name || '';
-  document.getElementById('edit_phone').value = d.phone || '';
-  document.getElementById('edit_email').value = d.email || '';
-  document.getElementById('edit_houseNo').value = d.houseNo || '';
-  document.getElementById('edit_building').value = d.building || '';
-  document.getElementById('edit_subdistrict').value = d.subdistrict || '';
-  document.getElementById('edit_district').value = d.district || '';
-  document.getElementById('edit_province').value = d.province || '';
-  document.getElementById('editModal').classList.add('open');
-}
-
-function closeEditModal() {
-  document.getElementById('editModal').classList.remove('open');
-}
-
-function saveEdit() {
-  const id = parseInt(document.getElementById('edit_id').value);
-  const data = loadData();
-  const idx = data.findIndex(x => x.id === id);
-  if (idx === -1) return;
-
-  const houseNo = document.getElementById('edit_houseNo').value.trim();
+  const houseNo = document.getElementById('edit_houseno').value.trim();
   const building = document.getElementById('edit_building').value.trim();
   const subdistrict = document.getElementById('edit_subdistrict').value.trim();
   const district = document.getElementById('edit_district').value.trim();
   const province = document.getElementById('edit_province').value.trim();
-  const postal = data[idx].postal || '';
+  const postal = document.getElementById('edit_postal').value.trim();
+  const address = [houseNo, building, 'แขวง'+subdistrict, 'เขต'+district, province, postal].filter(Boolean).join(' ');
 
-  data[idx] = {
-    ...data[idx],
-    serial:      document.getElementById('edit_serial').value.trim(),
-    product:     document.getElementById('edit_product').value,
-    company:     document.getElementById('edit_company').value.trim(),
-    purchaseDate: document.getElementById('edit_purchaseDate').value,
-    name:        document.getElementById('edit_name').value.trim(),
-    phone:       document.getElementById('edit_phone').value.trim(),
-    email:       document.getElementById('edit_email').value.trim(),
-    houseNo, building, subdistrict, district, province,
-    address: [houseNo, building, 'แขวง'+subdistrict, 'เขต'+district, province, postal].filter(Boolean).join(' '),
-    updatedAt: new Date().toISOString()
+  const updated = {
+    id: id,
+    registeredAt: entry.registeredAt || new Date().toISOString(),
+    serial: document.getElementById('edit_serial').value.trim(),
+    product: document.getElementById('edit_product').value,
+    company: document.getElementById('edit_company').value.trim(),
+    purchaseDate: document.getElementById('edit_purchasedate').value,
+    name: document.getElementById('edit_name').value.trim(),
+    phone: document.getElementById('edit_phone').value.trim(),
+    email: document.getElementById('edit_email').value.trim(),
+    houseNo, building, subdistrict, district, province, postal, address,
+    receiptName: entry.receiptName || '',
+    status: entry.status || 'ลงทะเบียนแล้ว'
   };
 
-  saveData(data);
-  closeEditModal();
-  renderAdmin();
+  // Update localStorage
+  const data = loadData();
+  const idx = data.findIndex(d => String(d.id) === String(id));
+  if (idx >= 0) { data[idx] = Object.assign(data[idx], updated); saveData(data); }
+
+  // Update Sheets via JSONP
+  if (updated.purchaseDate) {
+    const expiryDt = new Date(updated.purchaseDate + 'T00:00:00');
+    if (!isNaN(expiryDt)) {
+      expiryDt.setFullYear(expiryDt.getFullYear() + 2);
+      updated.expiryDate = fmtDate(expiryDt.toISOString().slice(0,10));
+    }
+  } else {
+    updated.expiryDate = entry.expiryDate || '';
+  }
+  updated.receiptDriveUrl = entry.receiptDriveUrl || '';
+
+  const cbName = 'editCb_' + Date.now();
+  const s = document.createElement('script');
+  window[cbName] = function(res) {
+    delete window[cbName];
+    if (document.body.contains(s)) document.body.removeChild(s);
+    closeEditModal();
+    renderAdmin();
+  };
+  s.onerror = function() { delete window[cbName]; closeEditModal(); renderAdmin(); };
+
+  const params = new URLSearchParams(Object.assign({}, updated, { action: 'update', delpw: 'adminaccessonly', callback: cbName, t: Date.now() }));
+  s.src = SHEETS_URL + '?' + params.toString();
+  document.body.appendChild(s);
 }
+
+
+// ── Edit Modal (see openEditModal/saveEdit above) ──
 
 
 // ── Product Manager ──
