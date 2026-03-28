@@ -378,7 +378,7 @@ tr.highlight td { background: #fffbea !important; }
 
     <div class="field">
       <label>เบอร์โทรศัพท์ <span class="req">*</span></label>
-      <input type="tel" id="f_phone" placeholder="เช่น 089-323-3232" />
+      <input type="tel" id="f_phone" placeholder="เช่น 089 323 3232" maxlength="12" oninput="formatPhone(this)" />
       <div class="error-msg" id="e_phone">กรุณากรอกเบอร์โทรศัพท์</div>
     </div>
 
@@ -773,12 +773,15 @@ function submitForm() {
     id: Date.now(),
     registeredAt: new Date().toISOString(),
     serial: v('f_serial'), product: v('f_product'), company: v('f_company'),
-    purchaseDate: v('f_purchasedate'), name: v('f_name'), phone: v('f_phone'),
+    purchaseDate: v('f_purchasedate'), name: v('f_name'), phone: v('f_phone').replace(/[^0-9]/g, ''),
     email: v('f_email'), postal: v('f_postal'), houseNo: v('f_houseno'),
     building: v('f_building'), subdistrict: v('f_subdistrict'), district: v('f_district'),
     province: v('f_province'), address, receiptName: uploadedFile ? uploadedFile.name : '', receiptData: uploadedFile ? uploadedFile.dataUrl : '', status: 'ลงทะเบียนแล้ว'
   };
-  const data = loadData(); data.push(entry); saveData(data);
+  // Save to localStorage without base64 image data (save space)
+  const entryForLocal = Object.assign({}, entry);
+  delete entryForLocal.receiptData;
+  const data = loadData(); data.push(entryForLocal); saveData(data);
 
   // ── Upload receipt to Drive first, then send to Sheets ──
   if (uploadedFile && uploadedFile.dataUrl) {
@@ -810,44 +813,30 @@ function submitForm() {
 
 // ── Upload receipt to Google Drive via JSONP ──
 function uploadReceiptToDrive(entry, file) {
-  const callbackName = 'uploadCallback_' + Date.now();
-  const script = document.createElement('script');
-  const base64data = file.dataUrl.split(',')[1] || file.dataUrl;
   const mimetype = file.dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
 
-  const timeout = setTimeout(() => {
-    delete window[callbackName];
-    if (document.body.contains(script)) document.body.removeChild(script);
-    sendToSheets(entry); // fallback: send without drive URL
-  }, 15000);
+  // Use FormData POST — no custom headers = no CORS preflight = response readable
+  const formData = new FormData();
+  formData.append('action', 'uploadReceipt');
+  formData.append('filename', file.name);
+  formData.append('mimetype', mimetype);
+  formData.append('data', file.dataUrl);
 
-  window[callbackName] = function(res) {
-    clearTimeout(timeout);
-    delete window[callbackName];
-    if (document.body.contains(script)) document.body.removeChild(script);
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(res => {
     if (res && res.result === 'success') {
       entry.receiptDriveUrl = res.url;
       entry.receiptDriveId = res.id;
-      // Update localStorage entry with drive URL
-      const allData = loadData();
-      const idx = allData.findIndex(d => d.id === entry.id);
-      if (idx >= 0) { allData[idx].receiptDriveUrl = res.url; saveData(allData); }
     }
     sendToSheets(entry);
-  };
-
-  script.src = SHEETS_URL
-    + '?action=uploadReceipt'
-    + '&filename=' + encodeURIComponent(file.name)
-    + '&mimetype=' + encodeURIComponent(mimetype)
-    + '&data=' + encodeURIComponent(base64data)
-    + '&callback=' + callbackName;
-  script.onerror = function() {
-    clearTimeout(timeout);
-    delete window[callbackName];
+  })
+  .catch(() => {
     sendToSheets(entry);
-  };
-  document.body.appendChild(script);
+  });
 }
 
 
@@ -906,6 +895,18 @@ function fmtDate(d) {
   if (!d) return '—';
   const [y,m,dd] = d.split('-');
   return `${dd}/${m}/${y}`;
+}
+
+
+// ── Phone formatter: 0XX XXX XXXX ──
+function formatPhone(input) {
+  let val = input.value.replace(/[^0-9]/g, '').slice(0, 10);
+  if (val.length > 6) {
+    val = val.slice(0,3) + ' ' + val.slice(3,6) + ' ' + val.slice(6);
+  } else if (val.length > 3) {
+    val = val.slice(0,3) + ' ' + val.slice(3);
+  }
+  input.value = val;
 }
 
 // ── Upload ──
@@ -1131,14 +1132,7 @@ function renderAdminWithData(data) {
       <td style="white-space:nowrap">${d.phone||'—'}</td>
       <td>${d.email||'—'}</td>
       <td style="font-size:12px;max-width:200px">${d.address||'—'}</td>
-      <td>
-        ${d.receiptDriveUrl
-          ? `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`
-          : d.receiptData
-            ? `<button class="view-receipt-btn" onclick="viewLocalReceipt('${d.id}')">🖼 ดูรูป</button>`
-            : '<span style="color:var(--muted)">—</span>'
-        }
-      </td>
+      <td>${getReceiptCell(d)}</td>
       <td><span class="badge badge-green">${d.status||'ลงทะเบียนแล้ว'}</span></td>
       <td style="white-space:nowrap;display:flex;gap:5px;padding:8px 14px">
         <button class="edit-btn" onclick="openEditModal('${d.id}')" title="แก้ไข">✏️</button>
@@ -1237,7 +1231,10 @@ function switchTab(tab) {
   document.getElementById('tab_register').classList.toggle('active', isRegister);
   document.getElementById('tab_check').classList.toggle('active', !isRegister);
   document.getElementById('formCard').style.display = isRegister ? 'block' : 'none';
-  document.getElementById('checkerCard').classList.toggle('open', !isRegister);
+  // Clear inline style first (set by showAdmin/closeAdmin), then toggle class
+  const checker = document.getElementById('checkerCard');
+  checker.style.display = '';
+  checker.classList.toggle('open', !isRegister);
   // Reset checker on switch
   if (!isRegister) {
     document.getElementById('check_serial').value = '';
@@ -1369,18 +1366,19 @@ function showWarrantyResult(entry) {
 
 
 
-// ── View local receipt (base64) ──
-function viewLocalReceipt(id) {
-  const data = loadData();
-  const entry = data.find(d => String(d.id) === String(id));
-  if (!entry || !entry.receiptData) return;
-  document.getElementById('receiptModalImg').src = entry.receiptData;
-  document.getElementById('receiptModalTitle').textContent = '📄 ' + (entry.receiptName || 'ใบเสร็จ') + ' — ' + entry.name;
-  const dl = document.getElementById('receiptDownloadBtn');
-  dl.href = entry.receiptData;
-  dl.download = entry.receiptName || 'receipt.jpg';
-  document.getElementById('receiptModal').classList.add('open');
+
+// ── Receipt cell helper ──
+function getReceiptCell(d) {
+  if (d.receiptDriveUrl) {
+    return `<a href="${d.receiptDriveUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`;
+  }
+  if (d.receiptName) {
+    return '<span style="color:var(--muted);font-size:12px">—</span>';
+  }
+  return '<span style="color:var(--muted)">—</span>';
 }
+
+// ── Receipt Viewer (Drive only) ──
 
 // ── Receipt Viewer ──
 function viewReceipt(id) {
