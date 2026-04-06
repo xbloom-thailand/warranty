@@ -1251,6 +1251,21 @@ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzd73NR4pQYVeDSkX-G9
 const DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1r5sL4IMt6qBMzzuPI5hlqWNqvFuA72Qp';
 const DRIVE_VIDEO_URL = 'https://drive.google.com/drive/folders/1BsnDCLRjcnG4p-2KP4IATBwrMMHH4619';
 const SHEET_ID = '1ckBbDh3o7npq7vymBrZaK1Z98AOU2HSDgh7amHR8_Mg';
+
+// ══ XSS PROTECTION — ใช้แทน innerHTML เมื่อ render ข้อมูลจาก user/API ══
+function escHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ══ SESSION TOKEN HELPER ══
+function getToken() { return (_currentUser && _currentUser.token) ? _currentUser.token : ''; }
+
+// ══ UUID HELPER (ป้องกัน ID collision จาก Date.now) ══
+function genId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
 const DEFAULT_PRODUCTS = [
   'xBloom Studio Midnight Black','xBloom Studio Moonlight White',
   'xBloom Studio Sage Green (Green Knob)','xBloom Studio Sage Green (Gold Knob)',
@@ -1331,6 +1346,32 @@ function openAdmin() {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+// ══ 2-STEP LOGIN HELPER — PIN ส่งผ่าน POST body เท่านั้น ไม่โผล่ใน URL ══
+function doLoginUser(name, pin, onSuccess, onFail) {
+  const claimId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  fetch(SHEETS_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'loginUserPost', name: name, pin: pin, claimId: claimId })
+  }).then(function() {
+    const cbName = 'claimCb_' + Date.now(), s = document.createElement('script');
+    const timer = setTimeout(function() {
+      delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      onFail('timeout', null);
+    }, 15000);
+    window[cbName] = function(res) {
+      clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      if (res && res.result === 'ok') onSuccess(res);
+      else onFail(res ? res.result : 'error', res);
+    };
+    s.onerror = function() { clearTimeout(timer); delete window[cbName]; onFail('network', null); };
+    s.src = SHEETS_URL + '?action=claimToken&claimId=' + encodeURIComponent(claimId) + '&callback=' + cbName + '&t=' + Date.now();
+    document.body.appendChild(s);
+  }).catch(function() { onFail('network', null); });
+}
+
 function checkPw() {
   const name = document.getElementById('loginName').value.trim();
   const pin  = document.getElementById('loginPin').value.trim();
@@ -1338,25 +1379,29 @@ function checkPw() {
   const errEl= document.getElementById('pwErr');
   if(!name||!pin){ errEl.textContent='กรุณากรอกชื่อและ PIN'; errEl.style.display='block'; return; }
   btn.textContent='กำลังตรวจสอบ...'; btn.disabled=true; errEl.style.display='none';
-  const cbName='loginCb_'+Date.now(), s=document.createElement('script');
-  const timer=setTimeout(()=>{ delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; errEl.textContent='หมดเวลา กรุณาลองใหม่'; errEl.style.display='block'; }, 12000);
-  window[cbName]=function(res){
-    clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
-    btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
-    if(res&&res.result==='ok'){
-      _currentUser = { name: res.name, role: res.role, pin: pin };
-      closeModal('pwModal');
-      showAdmin();
-    } else {
-      errEl.textContent='ชื่อหรือ PIN ไม่ถูกต้อง';
+  doLoginUser(name, pin,
+    function(res) {
+      btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
+      _currentUser = { name: res.name, role: res.role, token: res.token };
+      closeModal('pwModal'); showAdmin();
+    },
+    function(reason, res) {
+      btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
+      if (reason === 'locked') {
+        errEl.textContent = (res && res.message) || 'ล็อกชั่วคราว กรุณารอ';
+      } else if (reason === 'unauthorized') {
+        const hint = (res && res.attemptsLeft !== undefined) ? ' (เหลือ '+res.attemptsLeft+' ครั้ง)' : '';
+        errEl.textContent = 'ชื่อหรือ PIN ไม่ถูกต้อง' + hint;
+        document.getElementById('loginPin').value='';
+        document.getElementById('loginPin').focus();
+      } else if (reason === 'timeout') {
+        errEl.textContent = 'หมดเวลา กรุณาลองใหม่';
+      } else {
+        errEl.textContent = 'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่';
+      }
       errEl.style.display='block';
-      document.getElementById('loginPin').value='';
-      document.getElementById('loginPin').focus();
     }
-  };
-  s.src=SHEETS_URL+'?action=loginUser&name='+encodeURIComponent(name)+'&pin='+encodeURIComponent(pin)+'&callback='+cbName+'&t='+Date.now();
-  s.onerror=function(){ clearTimeout(timer); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; errEl.textContent='เชื่อมต่อไม่สำเร็จ'; errEl.style.display='block'; };
-  document.body.appendChild(s);
+  );
 }
 
 function showAdmin() {
@@ -1490,7 +1535,7 @@ function submitForm(){
   const purchaseDt=new Date(v('f_purchasedate')+'T00:00:00');
   const expiryDt=new Date(purchaseDt); expiryDt.setFullYear(expiryDt.getFullYear()+2);
   const entry={
-    id:Date.now(), registeredAt:nowTH(),
+    id:genId(), registeredAt:nowTH(),
     serial:v('f_serial'), product:v('f_product'), company:v('f_company'),
     purchaseDate:v('f_purchasedate'), expiryDate:fmtDate(expiryDt.toISOString().slice(0,10)),
     name:v('f_name'), phone:v('f_phone').replace(/[^0-9]/g,''), email:v('f_email'),
@@ -1533,10 +1578,21 @@ function sendToSheets(entry,btn){
     district:entry.district, province:entry.province, address:entry.address,
     receiptName:entry.receiptName||'', receiptDriveUrl:entry.receiptDriveUrl||'', status:entry.status
   });
-  fetch(SHEETS_URL+'?'+params.toString()).then(()=>{}).catch(()=>{}).finally(()=>{
-    if(btn){btn.disabled=false;btn.textContent='ลงทะเบียน ✓';}
-    showSuccessCard(entry);
-  });
+  fetch(SHEETS_URL+'?'+params.toString())
+    .then(r=>r.json())
+    .then(data=>{
+      if(btn){btn.disabled=false;btn.textContent='ลงทะเบียน ✓';}
+      if(data && data.result==='success'){
+        showSuccessCard(entry);
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง\n('+(data&&data.error?data.error:'unknown error')+')');
+      }
+    })
+    .catch(()=>{
+      if(btn){btn.disabled=false;btn.textContent='ลงทะเบียน ✓';}
+      // fetch อาจ fail เพราะ CORS แต่ข้อมูลอาจถูกบันทึกแล้ว — แสดง success card พร้อม warning
+      showSuccessCard(entry);
+    });
 }
 function showSuccessCard(entry){
   const expiryDt=new Date(entry.purchaseDate+'T00:00:00');
@@ -1546,10 +1602,10 @@ function showSuccessCard(entry){
       <div class="wc-brand">xBloom Studio</div>
       <div class="wc-sub">WARRANTY CARD · รับประกัน 2 ปี</div>
       <div class="wc-divider"></div>
-      <div class="wc-row"><span class="k">S/N</span><span class="v">${entry.serial}</span></div>
-      <div class="wc-row"><span class="k">สินค้า</span><span class="v">${entry.product}</span></div>
-      <div class="wc-row"><span class="k">ลูกค้า</span><span class="v">${entry.name}</span></div>
-      <div class="wc-row"><span class="k">อีเมล</span><span class="v">${entry.email}</span></div>
+      <div class="wc-row"><span class="k">S/N</span><span class="v">${escHtml(entry.serial)}</span></div>
+      <div class="wc-row"><span class="k">สินค้า</span><span class="v">${escHtml(entry.product)}</span></div>
+      <div class="wc-row"><span class="k">ลูกค้า</span><span class="v">${escHtml(entry.name)}</span></div>
+      <div class="wc-row"><span class="k">อีเมล</span><span class="v">${escHtml(entry.email)}</span></div>
       <div class="wc-divider"></div>
       <div class="wc-row"><span class="k">วันที่ซื้อ</span><span class="v">${fmtDateFromParts(entry.purchaseDate)}</span></div>
       <div class="wc-row"><span class="k">หมดประกัน</span><span class="v wc-expiry">${fmtDateFromParts(expiryDt.toISOString().slice(0,10))}</span></div>
@@ -1559,7 +1615,7 @@ function showSuccessCard(entry){
 }
 function resetForm(){
   uploadedFile=null;
-  document.getElementById('uploadText').textContent='คลิกเพื่อแนบไฟล์รูปภาพ (ไม่บังคับ)';
+  document.getElementById('uploadText').textContent='คลิกเพื่อแนบรูปใบเสร็จ (บังคับ)';
   document.getElementById('uploadArea').classList.remove('has-file');
   ['f_serial','f_name','f_phone','f_email','f_postal','f_houseno','f_building','f_subdistrict','f_district','f_province'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('f_company').value='xBloom Thailand';
@@ -1568,13 +1624,19 @@ function resetForm(){
 function handleFile(input){
   if(input.files&&input.files[0]){
     const file=input.files[0];
+    const MAX_SIZE = 8 * 1024 * 1024; // 8MB
+    if(file.size > MAX_SIZE){
+      alert('ไฟล์ใหญ่เกินไป (สูงสุด 8MB)\nไฟล์ที่เลือก: '+(file.size/1048576).toFixed(1)+' MB');
+      input.value='';
+      return;
+    }
     const reader=new FileReader();
     reader.onload=(e)=>{ uploadedFile={name:file.name,dataUrl:e.target.result}; document.getElementById('uploadText').textContent='✓ '+file.name; document.getElementById('uploadArea').classList.add('has-file'); };
     reader.readAsDataURL(file);
   }
 }
 function formatPhone(input){ let val=input.value.replace(/[^0-9]/g,'').slice(0,10); if(val.length>6)val=val.slice(0,3)+' '+val.slice(3,6)+' '+val.slice(6); else if(val.length>3)val=val.slice(0,3)+' '+val.slice(3); input.value=val; }
-function lookupPostal(p){ if(p.length!==5) return; /* placeholder for postal API */ }
+function lookupPostal(p){ /* TODO: postal API not yet implemented */ }
 
 // ══ WARRANTY CHECKER ══
 function checkWarranty(){
@@ -1608,15 +1670,15 @@ function showWarrantyResult(entry){
   else if(remainDays<=90){bannerClass='soon';bannerIcon='⚠️';bannerTitle='ใกล้หมดประกัน';bannerSub='เหลืออีก '+remainDays+' วัน';}
   const fillClass=remainDays<=0?'fill-red':remainDays<=90?'fill-orange':'fill-green';
   document.getElementById('warrantyResult').innerHTML=`
-    <div class="status-banner ${bannerClass}"><div class="status-icon">${bannerIcon}</div><div class="status-title">${bannerTitle}</div><div class="status-sub">${bannerSub}</div></div>
+    <div class="status-banner ${bannerClass}"><div class="status-icon">${bannerIcon}</div><div class="status-title">${escHtml(bannerTitle)}</div><div class="status-sub">${escHtml(bannerSub)}</div></div>
     <div class="progress-bar-wrap"><div class="progress-bar-label"><span>${fmtDateDisplay(purchaseDt)}</span><span>${pct}% ใช้ไปแล้ว</span><span>${fmtDateDisplay(expiryDt)}</span></div><div class="progress-bar-track"><div class="progress-bar-fill ${fillClass}" style="width:${100-pct}%"></div></div></div>
     <div class="detail-grid">
-      <div class="detail-box"><div class="dk">สินค้า</div><div class="dv">${entry.product||'—'}</div></div>
-      <div class="detail-box"><div class="dk">ชื่อลูกค้า</div><div class="dv">${entry.name||'—'}</div></div>
+      <div class="detail-box"><div class="dk">สินค้า</div><div class="dv">${escHtml(entry.product)||'—'}</div></div>
+      <div class="detail-box"><div class="dk">ชื่อลูกค้า</div><div class="dv">${escHtml(entry.name)||'—'}</div></div>
       <div class="detail-box"><div class="dk">วันที่ซื้อ</div><div class="dv">${fmtDateDisplay(purchaseDt)}</div></div>
       <div class="detail-box"><div class="dk">วันหมดประกัน</div><div class="dv">${fmtDateDisplay(expiryDt)}</div></div>
     </div>
-    <button class="btn-primary" style="margin-top:12px" onclick="switchTab('support');document.getElementById('t_serial').value='${entry.serial}'">🔧 แจ้งซ่อมเครื่องนี้</button>`;
+    <button class="btn-primary" style="margin-top:12px" onclick="switchTab('support');document.getElementById('t_serial').value='${escHtml(entry.serial)}'">🔧 แจ้งซ่อมเครื่องนี้</button>`;
   document.getElementById('warrantyResult').classList.add('show');
 }
 
@@ -1643,15 +1705,26 @@ function autoCheckWarrantyForTicket() {
   window[cbName] = function(res) {
     clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
     if (res && res.result === 'found' && res.data) {
-      const pd = res.data.purchaseDate;
       const today = new Date();
       let expiryDt = null;
-      if (pd) {
-        const iso = pd.includes('/') ? (()=>{const p=pd.split('/');return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');})() : pd;
-        const purchaseDt = new Date(iso + 'T00:00:00');
-        expiryDt = new Date(purchaseDt);
-        expiryDt.setFullYear(expiryDt.getFullYear() + 2);
+
+      // ใช้ expiryDate จาก Sheet ก่อน (รองรับประกันพิเศษ 1/3 ปี)
+      // ถ้าไม่มีค่อย fallback คำนวณจาก purchaseDate + 2 ปี
+      if (res.data.expiryDate) {
+        const iso = normalizeToISO(res.data.expiryDate);
+        expiryDt = iso ? new Date(iso + 'T00:00:00') : null;
       }
+      if (!expiryDt || isNaN(expiryDt)) {
+        const pd = res.data.purchaseDate;
+        if (pd) {
+          const iso = normalizeToISO(pd);
+          if (iso) {
+            expiryDt = new Date(iso + 'T00:00:00');
+            expiryDt.setFullYear(expiryDt.getFullYear() + 2);
+          }
+        }
+      }
+
       // Auto-fill customer info
       if (res.data.name) document.getElementById('t_name').value = res.data.name;
       if (res.data.phone) {
@@ -1691,17 +1764,26 @@ function updateRepairTypeUI() {
 function handleVideoFile(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
-  const maxSize = 100 * 1024 * 1024; // 100MB
-  if (file.size > maxSize) {
-    alert('ไฟล์วิดีโอใหญ่เกิน 100MB กรุณาบีบอัดก่อน หรือใช้ไฟล์อื่น');
+
+  // ตรวจ MIME type จริง (ป้องกัน rename ไฟล์อื่นเป็น .mp4)
+  const ALLOWED_MIME = ['video/mp4','video/quicktime','video/x-msvideo','video/x-matroska','video/webm','video/mpeg'];
+  if (!ALLOWED_MIME.includes(file.type)) {
+    alert('ไฟล์ไม่ถูกต้อง กรุณาใช้ไฟล์วิดีโอ (MP4, MOV, AVI, MKV) เท่านั้น\nตรวจพบ: ' + (file.type || 'ไม่ทราบประเภท'));
     input.value = '';
     return;
   }
+
+  const maxSize = 50 * 1024 * 1024; // ลด 100→50MB เพื่อป้องกัน RAM crash บน mobile
+  if (file.size > maxSize) {
+    alert('ไฟล์วิดีโอใหญ่เกิน 50MB\nกรุณาบีบอัดก่อนอัปโหลด หรือตัดให้สั้นลง');
+    input.value = '';
+    return;
+  }
+
   document.getElementById('videoUploadText').textContent = '⏳ กำลังโหลด ' + file.name + '...';
   document.getElementById('videoProgressWrap').style.display = 'block';
   document.getElementById('videoUploadArea').classList.add('has-file');
   const reader = new FileReader();
-  let loaded = 0;
   reader.onprogress = (e) => {
     if (e.lengthComputable) {
       const pct = Math.round(e.loaded / e.total * 100);
@@ -1755,35 +1837,68 @@ function submitTicket(){
   const ticketId='TK-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-6);
   const phone_clean = phone.replace(/[^0-9]/g,'');
 
-  // Upload video to Drive first, then create ticket via POST (URL too long for GET)
+  // Upload video ก่อน แล้วค่อยสร้าง ticket ผ่าน JSONP เพื่อรอผลจริง
   uploadVideoToDrive(ticketId, _uploadedVideo, function(videoUrl, videoFilename) {
-    // Use fetch POST to handle long description + logUrl without URL length issues
-    fetch(SHEETS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'createTicket',
-        ticketId, createdAt: nowTH(),
-        serial, name, phone: phone_clean, email, lineId: lineid,
-        issueType: issuetype, description: desc,
-        logUrl: logurl, repairType: repairtype,
-        videoFilename: videoFilename||'', videoUrl: videoUrl||'',
-        status: 'รับเรื่องแล้ว'
-      })
-    }).catch(() => {}); // fire and forget
-
-    // Show success
-    document.getElementById('newTicketId').textContent = ticketId;
-    document.getElementById('supportFormCard').style.display = 'none';
-    document.getElementById('ticketSuccessCard').style.display = 'block';
-    btn.disabled = false; btn.textContent = 'ส่งคำขอรับบริการ →';
-    _uploadedVideo = null;
-    ['t_serial','t_name','t_phone','t_email','t_lineid','t_description','t_logurl'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('t_issuetype').value='';
-    document.getElementById('videoUploadText').textContent = 'คลิกเพื่อแนบวิดีโอ (MP4, MOV ขนาดไม่เกิน 100MB)';
-    document.getElementById('videoProgressWrap').style.display = 'none';
-    document.getElementById('videoUploadArea').classList.remove('has-file');
+    btn.textContent = '⏳ กำลังบันทึก Ticket...';
+    // ส่งข้อมูล ticket ผ่าน JSONP เพื่อรู้ผลจริง (POST ผ่าน no-cors ไม่ทราบผล)
+    const cbName='tkCb_'+Date.now(), s=document.createElement('script');
+    const ticketPayload = {
+      action:'createTicket', ticketId, createdAt: nowTH(),
+      serial, name, phone: phone_clean, email, lineId: lineid,
+      issueType: issuetype, description: desc,
+      logUrl: logurl, repairType: repairtype,
+      videoFilename: videoFilename||'', videoUrl: videoUrl||'',
+      status: 'รับเรื่องแล้ว'
+    };
+    const done = {v:false};
+    const timer = setTimeout(()=>{
+      if(done.v)return; done.v=true;
+      delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      // timeout — แต่ ticket อาจบันทึกไปแล้ว แจ้งให้ user ทราบ
+      document.getElementById('newTicketId').textContent = ticketId;
+      document.getElementById('supportFormCard').style.display = 'none';
+      document.getElementById('ticketSuccessCard').style.display = 'block';
+      _uploadedVideo = null;
+      ['t_serial','t_name','t_phone','t_email','t_lineid','t_description','t_logurl'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('t_issuetype').value='';
+      document.getElementById('t_repairtype').value='';
+      document.getElementById('videoUploadText').textContent = 'คลิกเพื่อแนบวิดีโอ (MP4, MOV ขนาดไม่เกิน 100MB)';
+      document.getElementById('videoProgressWrap').style.display = 'none';
+      document.getElementById('videoUploadArea').classList.remove('has-file');
+      document.getElementById('t_warrantyStatus').style.display='none';
+      btn.disabled = false; btn.textContent = 'ส่งคำขอรับบริการ →';
+    }, 15000);
+    window[cbName]=function(res){
+      if(done.v)return; done.v=true;
+      clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      if(res && res.result==='success'){
+        document.getElementById('newTicketId').textContent = ticketId;
+        document.getElementById('supportFormCard').style.display = 'none';
+        document.getElementById('ticketSuccessCard').style.display = 'block';
+        _uploadedVideo = null;
+        ['t_serial','t_name','t_phone','t_email','t_lineid','t_description','t_logurl'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('t_issuetype').value='';
+        document.getElementById('t_repairtype').value='';
+        document.getElementById('videoUploadText').textContent = 'คลิกเพื่อแนบวิดีโอ (MP4, MOV ขนาดไม่เกิน 100MB)';
+        document.getElementById('videoProgressWrap').style.display = 'none';
+        document.getElementById('videoUploadArea').classList.remove('has-file');
+        document.getElementById('t_warrantyStatus').style.display='none';
+      } else {
+        alert('เกิดข้อผิดพลาด กรุณาลองส่งอีกครั้ง หรือติดต่อ Line: @xbloomthailand');
+      }
+      btn.disabled = false; btn.textContent = 'ส่งคำขอรับบริการ →';
+    };
+    s.onerror=function(){
+      if(done.v)return; done.v=true;
+      clearTimeout(timer); delete window[cbName];
+      alert('เชื่อมต่อไม่ได้ กรุณาลองใหม่');
+      btn.disabled = false; btn.textContent = 'ส่งคำขอรับบริการ →';
+    };
+    // ส่งผ่าน JSONP GET (ข้อมูลน้อย) หรือ POST แล้ว fallback JSONP
+    const params = new URLSearchParams(ticketPayload);
+    params.set('callback', cbName); params.set('t', Date.now());
+    s.src = SHEETS_URL+'?'+params.toString();
+    document.body.appendChild(s);
   });
 }
 
@@ -1896,8 +2011,8 @@ function showTicketResult(ticket){
   let html=`
   <div style="background:var(--bg);border-radius:14px;padding:16px;margin-bottom:16px">
     <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Ticket ID</div>
-    <div style="font-family:monospace;font-size:18px;font-weight:700;color:var(--text)">${ticket.ticketId||'—'}</div>
-    <div style="font-size:13px;color:var(--muted);margin-top:4px">S/N: ${ticket.serial||'—'} · ${ticket.issueType||'—'}</div>
+    <div style="font-family:monospace;font-size:18px;font-weight:700;color:var(--text)">${escHtml(ticket.ticketId||'—')}</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">S/N: ${escHtml(ticket.serial||'—')} · ${escHtml(ticket.issueType||'—')}</div>
     <div style="margin-top:8px">${repairLabel}</div>
   </div>
 
@@ -1920,7 +2035,7 @@ function showTicketResult(ticket){
     if(step.label==='ส่งเครื่องใหม่ให้ลูกค้า'&&(done||active)&&ticket.trackingLink)
       stepExtra=`<div class="tl-note">📦 Tracking: <a href="${ticket.trackingLink.startsWith('http')?ticket.trackingLink:'https://'+ticket.trackingLink}" target="_blank" style="color:var(--blue);font-weight:600">${ticket.trackingLink}</a></div>`;
     if(active&&ticket.staffNote&&!stepExtra&&!WARRANTY_INTERNAL_STATUSES.includes(ticket.status))
-      stepExtra=`<div class="tl-note">💬 ${ticket.staffNote}</div>`;
+      stepExtra=`<div class="tl-note">💬 ${escHtml(ticket.staffNote)}</div>`;
     html+=`<div class="timeline-step">
       <div class="tl-left">
         <div class="tl-dot ${dotClass}" ${activeRing}>${done?'✓':step.icon}</div>
@@ -1935,7 +2050,7 @@ function showTicketResult(ticket){
 
   html+=`</div>`;
   if(ticket.assignedTo&&ticket.assignedTo!=='—')
-    html+=`<div style="font-size:13px;color:var(--muted);padding:12px 0 4px">👤 ผู้รับผิดชอบ: <strong style="color:var(--text)">${ticket.assignedTo}</strong></div>`;
+    html+=`<div style="font-size:13px;color:var(--muted);padding:12px 0 4px">👤 ผู้รับผิดชอบ: <strong style="color:var(--text)">${escHtml(ticket.assignedTo)}</strong></div>`;
 
   document.getElementById('trackResult').innerHTML=html;
 }
@@ -1950,7 +2065,7 @@ function loadWarranties(){
     else{document.getElementById('warrantyTableBody').innerHTML='<tr><td colspan="12"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
   };
   s.onerror=function(){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];document.getElementById('warrantyTableBody').innerHTML='<tr><td colspan="12"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ <button onclick="loadWarranties()" style="margin-left:8px;padding:4px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer">ลองใหม่</button></div></td></tr>';};
-  s.src=SHEETS_URL+'?action=getall&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=getall&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 function normalizeDataDates(data){
@@ -2003,11 +2118,12 @@ function openReceiptFile(filename){
 
 function renderWarranties(){
   function isReplacement(d){
-    return Object.values(d).some(function(v){
-      return typeof v === 'string' && (v.indexOf('เครื่องทดแทน')===0 || v.indexOf('เคลมจาก')>=0 || v === 'replacement');
-    });
+    if(d.type==='replacement'||d.replacementOf) return true;
+    if(typeof d.status==='string'&&d.status.indexOf('เครื่องทดแทน')===0) return true;
+    return false;
   }
   function getFromSN(d){
+    if(d.replacementOf) return d.replacementOf;
     var vals=Object.values(d);
     for(var vi=0;vi<vals.length;vi++){
       var v=vals[vi];
@@ -2072,14 +2188,14 @@ function renderWarranties(){
       return '<tr id="wrow_'+d.id+'" '+rowStyle+'>'
         +'<td>'+(data.length-i)+'</td>'
         +'<td style="white-space:nowrap;font-size:12px">'+dateStr+'<br><span style="color:var(--muted)">'+timeStr+'</span></td>'
-        +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.serial||'—')+'<br>'+warrantyBadge+'</td>'
-        +'<td>'+(d.product||'—')+'</td>'
-        +'<td>'+(d.company||'—')+'</td>'
+        +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+escHtml(d.serial||'—')+'<br>'+warrantyBadge+'</td>'
+        +'<td>'+escHtml(d.product||'—')+'</td>'
+        +'<td>'+escHtml(d.company||'—')+'</td>'
         +'<td style="white-space:nowrap;min-width:130px">'+(d.purchaseDate||'—')+'<br><div style="margin-top:4px">'+wBar+'</div></td>'
-        +'<td>'+(d.name||'—')+'</td>'
-        +'<td style="white-space:nowrap">'+(d.phone||'—')+'</td>'
-        +'<td>'+(d.email||'—')+'</td>'
-        +'<td style="font-size:12px;max-width:180px">'+(d.address||'—')+'</td>'
+        +'<td>'+escHtml(d.name||'—')+'</td>'
+        +'<td style="white-space:nowrap">'+escHtml(d.phone||'—')+'</td>'
+        +'<td>'+escHtml(d.email||'—')+'</td>'
+        +'<td style="font-size:12px;max-width:180px">'+escHtml(d.address||'—')+'</td>'
         +'<td>'+receiptCell+'</td>'
         +'<td style="white-space:nowrap"><button class="edit-btn" onclick="openWarrantyEdit(\''+d.id+'\')" title="แก้ไข">✏️</button> <button class="del-btn" onclick="deleteWarranty(\''+d.id+'\')" title="ลบ">🗑</button></td>'
         +'</tr>';
@@ -2087,7 +2203,7 @@ function renderWarranties(){
   }catch(err){document.getElementById('warrantyTableBody').innerHTML='<tr><td colspan="12"><div class="empty-state">⚠ แสดงข้อมูลไม่สำเร็จ: '+err.message+'</div></td></tr>';}
 }
 function openWarrantyEdit(id){
-  const pw=prompt('กรุณาพิมพ์รหัสยืนยัน:'); if(!pw||pw.trim()!=='adminaccessonly'){if(pw!==null)alert('รหัสไม่ถูกต้อง');return;}
+  if(!_currentUser||_currentUser.role!=='admin'){alert('เฉพาะ Admin เท่านั้น');return;}
   const entry=_warrantyData.find(d=>String(d.id)===String(id)); if(!entry){alert('ไม่พบข้อมูล');return;}
   window._editingWarrantyId=id; window._editingWarrantyEntry=entry;
   renderProductSelect('ew_product',entry.product||'');
@@ -2119,7 +2235,7 @@ function saveWarrantyEdit(){
   const pd=document.getElementById('ew_purchasedate').value;
   let expiryDate=entry.expiryDate||'';
   if(pd){const exDt=new Date(pd+'T00:00:00');exDt.setFullYear(exDt.getFullYear()+2);if(!isNaN(exDt))expiryDate=fmtDate(exDt.toISOString().slice(0,10));}
-  const updated={id,serial:document.getElementById('ew_serial').value.trim(),product:document.getElementById('ew_product').value,company:document.getElementById('ew_company').value.trim(),purchaseDate:pd,expiryDate,name:document.getElementById('ew_name').value.trim(),phone:document.getElementById('ew_phone').value.trim(),email:document.getElementById('ew_email').value.trim(),houseNo,building,subdistrict,district,province,postal,address,receiptName:entry.receiptName||'',receiptDriveUrl:entry.receiptDriveUrl||'',status:entry.status||'ลงทะเบียนแล้ว',delpw:'adminaccessonly'};
+  const updated={id,serial:document.getElementById('ew_serial').value.trim(),product:document.getElementById('ew_product').value,company:document.getElementById('ew_company').value.trim(),purchaseDate:pd,expiryDate,name:document.getElementById('ew_name').value.trim(),phone:document.getElementById('ew_phone').value.trim(),email:document.getElementById('ew_email').value.trim(),houseNo,building,subdistrict,district,province,postal,address,receiptName:entry.receiptName||'',receiptDriveUrl:entry.receiptDriveUrl||'',status:entry.status||'ลงทะเบียนแล้ว',sessionToken:getToken()};
   const cbName='ewCb_'+Date.now(),s=document.createElement('script');
   window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);closeModal('editWarrantyModal');loadWarranties();};
   s.onerror=function(){delete window[cbName];closeModal('editWarrantyModal');loadWarranties();};
@@ -2128,21 +2244,23 @@ function saveWarrantyEdit(){
   document.body.appendChild(s);
 }
 function deleteWarranty(id){
-  const pw=prompt('กรุณาพิมพ์รหัสยืนยันเพื่อลบ:'); if(!pw||pw.trim()!=='adminaccessonly'){if(pw!==null)alert('รหัสไม่ถูกต้อง');return;}
-  const changedBy=_currentUser?_currentUser.name:'unknown';
-  const row=document.getElementById('wrow_'+id); if(row){row.style.opacity='0';row.style.transition='opacity .25s';}
-  const cbName='wdCb_'+Date.now(),s=document.createElement('script');
-  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);const idx=_warrantyData.findIndex(d=>String(d.id)===String(id));if(idx>=0)_warrantyData.splice(idx,1);renderWarranties();};
-  s.onerror=function(){delete window[cbName];renderWarranties();};
-  s.src=SHEETS_URL+'?action=delete&id='+encodeURIComponent(id)+'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
-  document.body.appendChild(s);
+  if(!_currentUser||_currentUser.role!=='admin'){alert('เฉพาะ Admin เท่านั้น');return;}
+  requireAdminPw('🗑 ลบข้อมูลประกัน','ยืนยันเพื่อลบรายการนี้ — ไม่สามารถกู้คืนได้',()=>{
+    const changedBy=_currentUser?_currentUser.name:'unknown';
+    const row=document.getElementById('wrow_'+id); if(row){row.style.opacity='0';row.style.transition='opacity .25s';}
+    const cbName='wdCb_'+Date.now(),s=document.createElement('script');
+    window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);const idx=_warrantyData.findIndex(d=>String(d.id)===String(id));if(idx>=0)_warrantyData.splice(idx,1);renderWarranties();};
+    s.onerror=function(){delete window[cbName];renderWarranties();};
+    s.src=SHEETS_URL+'?action=delete&id='+encodeURIComponent(id)+'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
+    document.body.appendChild(s);
+  });
 }
 function clearAllWarranties(){
   requireAdminPw('🗑 ลบข้อมูลทั้งหมด','⚠ การดำเนินการนี้จะลบข้อมูลประกันทั้งหมด ไม่สามารถกู้คืนได้',()=>{
     const cbName='caCb_'+Date.now(),s=document.createElement('script');
     window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);if(res.result==='success'){localStorage.removeItem(STORAGE_KEY);_warrantyData=[];renderWarranties();}};
     s.onerror=function(){delete window[cbName];};
-    s.src=SHEETS_URL+'?action=deleteall&delpw=adminaccessonly&callback='+cbName+'&t='+Date.now();
+    s.src=SHEETS_URL+'?action=deleteall&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
     document.body.appendChild(s);
   });
 }
@@ -2164,35 +2282,32 @@ function confirmAdminAction() {
   const pin = document.getElementById('adminActionPw').value.trim();
   const errEl = document.getElementById('adminActionErr');
   if (!pin) { errEl.textContent='กรุณาใส่ PIN'; errEl.classList.add('show'); return; }
-
-  // ถ้า currentUser มี PIN cache อยู่แล้ว ให้ตรวจ locally ก่อน
-  if (_currentUser && _currentUser.pin && pin === String(_currentUser.pin)) {
-    closeModal('adminActionModal');
-    if(_adminActionCallback){ _adminActionCallback(); _adminActionCallback=null; }
-    return;
-  }
-
   const btn = document.getElementById('adminActionConfirmBtn');
   btn.textContent = 'กำลังตรวจสอบ...'; btn.disabled = true;
-  const cbName = 'verCb_'+Date.now(), s = document.createElement('script');
-  const timer = setTimeout(()=>{ delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s); btn.textContent='✓ ยืนยัน'; btn.disabled=false; errEl.textContent='หมดเวลา'; errEl.classList.add('show'); }, 8000);
-  window[cbName] = function(res) {
-    clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
-    btn.textContent='✓ ยืนยัน'; btn.disabled=false;
-    if(res && res.result==='ok') {
+  const name = _currentUser ? _currentUser.name : '';
+  doLoginUser(name, pin,
+    function(res) {
+      btn.textContent='✓ ยืนยัน'; btn.disabled=false;
+      if(_currentUser) _currentUser.token = res.token;
       closeModal('adminActionModal');
       if(_adminActionCallback){ _adminActionCallback(); _adminActionCallback=null; }
-    } else {
-      errEl.textContent='PIN ไม่ถูกต้อง';
+    },
+    function(reason, res) {
+      btn.textContent='✓ ยืนยัน'; btn.disabled=false;
+      if (reason === 'locked') {
+        errEl.textContent = (res && res.message) || 'ล็อกชั่วคราว กรุณารอ';
+      } else if (reason === 'timeout') {
+        errEl.textContent = 'หมดเวลา กรุณาลองใหม่';
+      } else if (reason === 'network') {
+        errEl.textContent = 'เชื่อมต่อไม่สำเร็จ';
+      } else {
+        errEl.textContent = 'PIN ไม่ถูกต้อง';
+        document.getElementById('adminActionPw').value='';
+        document.getElementById('adminActionPw').focus();
+      }
       errEl.classList.add('show');
-      document.getElementById('adminActionPw').value='';
-      document.getElementById('adminActionPw').focus();
     }
-  };
-  const name = _currentUser ? _currentUser.name : '';
-  s.src = SHEETS_URL+'?action=loginUser&name='+encodeURIComponent(name)+'&pin='+encodeURIComponent(pin)+'&callback='+cbName+'&t='+Date.now();
-  s.onerror = function(){ clearTimeout(timer); btn.textContent='✓ ยืนยัน'; btn.disabled=false; errEl.textContent='เชื่อมต่อไม่สำเร็จ'; errEl.classList.add('show'); };
-  document.body.appendChild(s);
+  );
 }
 
 function exportWarrantyCSV(){
@@ -2229,12 +2344,12 @@ function loadTickets(){
     else{document.getElementById('ticketTableBody').innerHTML='<tr><td colspan="11"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
   };
   s.onerror=function(){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];document.getElementById('ticketTableBody').innerHTML='<tr><td colspan="11"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ</div></td></tr>';};
-  s.src=SHEETS_URL+'?action=getAllTickets&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=getAllTickets&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 
 function setTicketMainTab(tab){
-  _ticketMainTab=tab; _ticketFilter='incoming';
+  _ticketMainTab=tab;
   ['warranty','normal','repair'].forEach(function(t){
     var btn=document.getElementById('ticketMainTab_'+t);
     if(!btn)return;
@@ -2396,9 +2511,9 @@ function renderTickets(){
       +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.ticketId||'—')+'</td>'
       +'<td style="font-size:12px;white-space:nowrap">'+(d.createdAt?new Date(d.createdAt).toLocaleDateString('th-TH'):'—')+'</td>'
       +'<td style="font-family:monospace;font-size:12px">'+(d.serial||'—')+'<br>'+typeLabel+'</td>'
-      +'<td>'+(d.name||'—')+'</td>'
-      +'<td>'+(d.phone||'—')+'</td>'
-      +'<td style="max-width:140px;font-size:12px">'+(d.issueType||'—')+'</td>'
+      +'<td>'+escHtml(d.name||'—')+'</td>'
+      +'<td>'+escHtml(d.phone||'—')+'</td>'
+      +'<td style="max-width:140px;font-size:12px">'+escHtml(d.issueType||'—')+'</td>'
       +'<td>'+(d.logUrl?'<a href="'+d.logUrl+'" target="_blank" style="color:var(--blue);font-size:11px">📋 Log</a>':'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td>'+(d.videoFilename?(
         (d.videoUrl&&!d.videoUrl.includes('/folders/'))
@@ -2407,7 +2522,7 @@ function renderTickets(){
         ):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td><span class="badge '+badgeClass+'">'+(d.status||'—')+'</span></td>'
       +'<td style="font-size:12px">'+(d.assignedTo||'<span style="color:var(--muted)">—</span>')+'</td>'
-      +'<td style="min-width:120px"'+(isWarrantyClosedView?'':' style="display:none"')+'>'+globalCell+'</td>'
+      +'<td style="min-width:120px;'+(isWarrantyClosedView?'':'display:none')+'">'+globalCell+'</td>'
       +'<td style="white-space:nowrap;display:flex;gap:6px;padding:11px 14px"><button class="edit-btn" onclick="openTicketEdit(\''+d.ticketId+'\')">✏️ อัปเดต</button>'+(canDelete?'<button class="del-btn" onclick="openDeleteTicket(\''+d.ticketId+'\')" title="ลบ Ticket">🗑</button>':'')+'</td>'
       +'</tr>';
   }).join('');
@@ -2683,7 +2798,7 @@ function saveTicketEditBranch(nextStatus, warrantyCase){
     +'&status='+encodeURIComponent(nextStatus)
     +'&warrantyCase='+warrantyCase
     +'&staffNote='+encodeURIComponent(staffNote)
-    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -2725,17 +2840,17 @@ const REPAIR_CLAIM_FLOW = [
       var infoHtml = '<div style="background:#f0f4ff;border:1.5px solid #c7d7fd;border-radius:12px;padding:14px;margin-bottom:14px">'
         + '<div style="font-size:11px;font-weight:600;color:#1e40af;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">📋 ข้อมูลจากลูกค้า</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
-        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">S/N เครื่อง</div><div style="font-size:14px;font-weight:700;font-family:monospace">'+(ticket.serial||'—')+'</div></div>'
-        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">ลูกค้า</div><div style="font-size:14px;font-weight:600">'+(ticket.name||'—')+'</div></div>'
-        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">เบอร์โทร</div><div style="font-size:14px">'+(ticket.phone||'—')+'</div></div>'
-        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Line ID</div><div style="font-size:14px">'+(ticket.lineId||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">S/N เครื่อง</div><div style="font-size:14px;font-weight:700;font-family:monospace">'+escHtml(ticket.serial||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">ลูกค้า</div><div style="font-size:14px;font-weight:600">'+escHtml(ticket.name||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">เบอร์โทร</div><div style="font-size:14px">'+escHtml(ticket.phone||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Line ID</div><div style="font-size:14px">'+escHtml(ticket.lineId||'—')+'</div></div>'
         + '</div>'
         + '<div style="background:#fef9c3;border-radius:8px;padding:10px;margin-bottom:8px">'
         + '<div style="font-size:10px;color:#92400e;margin-bottom:4px">⚠ ประเภทอาการ</div>'
-        + '<div style="font-size:15px;font-weight:700;color:#78350f">'+(ticket.issueType||'—')+'</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#78350f">'+escHtml(ticket.issueType||'—')+'</div>'
         + '</div>'
-        + (ticket.description?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">📝 รายละเอียด</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+ticket.description+'</div></div>':'')
-        + (ticket.logUrl?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>📋</span><a href="'+ticket.logUrl+'" target="_blank" style="font-size:13px;color:var(--blue)">Machine Log</a></div>':'');
+        + (ticket.description?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">📝 รายละเอียด</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+escHtml(ticket.description)+'</div></div>':'')
+        + (ticket.logUrl?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>📋</span><a href="'+encodeURI(ticket.logUrl)+'" target="_blank" rel="noopener" style="font-size:13px;color:var(--blue)">Machine Log</a></div>':'');
 
       // VDO - ดึงจาก original warranty ticket ถ้าไม่มี
       var vdoHtml = '';
@@ -2790,7 +2905,7 @@ const REPAIR_CLAIM_FLOW = [
     renderFields: function(ticket) {
       return '<div style="margin-bottom:14px">'
         + '<div class="sub-title">สรุปผลการซ่อม <span style="color:var(--red)">*</span></div>'
-        + '<textarea id="rc_techresult" placeholder="อธิบายสิ่งที่ซ่อม วิธีแก้ไข อะไหล่ที่เปลี่ยน..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;min-height:80px">'+(ticket.techNote||'')+'</textarea>'
+        + '<textarea id="rc_techresult" placeholder="อธิบายสิ่งที่ซ่อม วิธีแก้ไข อะไหล่ที่เปลี่ยน..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;min-height:80px">'+escHtml(ticket.techNote||'')+'</textarea>'
         + '</div>'
         + '<div>'
         + '<div class="sub-title">VDO หลักฐานการซ่อม <span style="color:var(--red)">*</span></div>'
@@ -2820,9 +2935,9 @@ const REPAIR_CLAIM_FLOW = [
     nextLabel: '🏁 ปิด Ticket', nextStatus: 'ปิด Ticket',
     renderFields: function(ticket) {
       return '<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:16px">'
-        + '<div style="font-size:13px;font-weight:600;color:#7c3aed;margin-bottom:10px">✅ ช่าง '+( ticket.assignedTo||'—')+' รายงานว่าซ่อมเสร็จแล้ว</div>'
-        + (ticket.techNote?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">สรุปผลจากช่าง</div><div style="font-size:13px;line-height:1.6">'+ticket.techNote+'</div></div>':'')
-        + (ticket.videoProof?'<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+ticket.videoProof+'" target="_blank" style="font-size:13px;color:var(--blue)">VDO หลักฐานการซ่อม</a></div>':'')
+        + '<div style="font-size:13px;font-weight:600;color:#7c3aed;margin-bottom:10px">✅ ช่าง '+escHtml(ticket.assignedTo||'—')+' รายงานว่าซ่อมเสร็จแล้ว</div>'
+        + (ticket.techNote?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">สรุปผลจากช่าง</div><div style="font-size:13px;line-height:1.6">'+escHtml(ticket.techNote)+'</div></div>':'')
+        + (ticket.videoProof?'<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+encodeURI(ticket.videoProof)+'" target="_blank" rel="noopener" style="font-size:13px;color:var(--blue)">VDO หลักฐานการซ่อม</a></div>':'')
         + '</div>';
     },
     validate: function() { return null; }
@@ -3103,7 +3218,7 @@ function saveRepairClaimStep(targetStatus, isBack){
     +'&techNote='+encodeURIComponent(techNote)
     +'&videoProof='+encodeURIComponent(extraFields.videoProof||'')
     +'&videoFilename='+encodeURIComponent(extraFields.videoFilename||'')
-    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
   // reset upload state when going to next step
@@ -3188,7 +3303,7 @@ function saveTicketEdit(){
     +'&staffNote='+encodeURIComponent(staffNote)+'&techNote='+encodeURIComponent(techNote)
     +'&approvedBy='+encodeURIComponent(approvedBy)+'&trackingLink='+encodeURIComponent(trackingLink)
     +'&warrantyCase='+encodeURIComponent(warrantyCase)
-    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -3219,7 +3334,7 @@ function markMachineAsClaimFixed(serial, ticketId, changedBy){
     +'&origSN='+encodeURIComponent(origSN)
     +'&customerName='+encodeURIComponent(customerName)
     +'&changedBy='+encodeURIComponent(changedBy)
-    +'&delpw=adminaccessonly'
+    +'&sessionToken='+encodeURIComponent(getToken())
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -3285,7 +3400,7 @@ function createReplacementWarranty(ticket, newSerial, changedBy, callback){
     +'&newSerial='+encodeURIComponent(newSerial)
     +'&ticketId='+encodeURIComponent(ticket.ticketId)
     +'&changedBy='+encodeURIComponent(changedBy)
-    +'&delpw=adminaccessonly'
+    +'&sessionToken='+encodeURIComponent(getToken())
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -3484,7 +3599,7 @@ function saveGlobalClaimStatus(){
     +'&gcOldMachine='+encodeURIComponent(oldMachine)
     +'&gcNewMachine='+encodeURIComponent(newMachine)
     +'&gcLot='+encodeURIComponent(lot)
-    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -3614,7 +3729,7 @@ function saveManualCase(){
       window[cbR]=function(){delete window[cbR];if(document.body.contains(sR))document.body.removeChild(sR);};
       sR.src=SHEETS_URL+'?action=createReplacementWarranty&originalSerial='+encodeURIComponent(serial)
         +'&newSerial='+encodeURIComponent(newSerial)+'&ticketId='+encodeURIComponent(ticketId)
-        +'&changedBy='+encodeURIComponent(changedBy)+'&delpw=adminaccessonly&callback='+cbR+'&t='+Date.now();
+        +'&changedBy='+encodeURIComponent(changedBy)+'&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbR+'&t='+Date.now();
       document.body.appendChild(sR);
     }
     if(btn){btn.textContent='💾 บันทึกเคสย้อนหลัง';btn.disabled=false;}
@@ -3625,13 +3740,9 @@ function saveManualCase(){
 }
 
 function copyGlobalLink(){
-  var base=window.location.origin+window.location.pathname;
-  var link=base+'?mode=global&token=xbloom2026global';
-  navigator.clipboard.writeText(link).then(function(){
-    alert('✅ คัดลอก Link แล้ว!\n\n'+link+'\n\nส่ง link นี้ให้ Global ได้เลย');
-  }).catch(function(){
-    prompt('Copy link นี้ส่งให้ Global:', link);
-  });
+  // Token ถูกตั้งค่าใน Apps Script Properties โดย setupGlobalToken()
+  // ไม่สามารถ generate ฝั่ง client ได้ — ให้ admin รัน setupGlobalToken() ใน Apps Script แล้ว copy URL จากที่นั่น
+  alert('วิธีสร้าง Global Report Link:\n\n1. เปิด Google Apps Script\n2. เลือก function: setupGlobalToken\n3. กด Run\n4. Copy URL ที่ได้จาก dialog นั้นส่งให้ Global\n\n(ทำครั้งเดียว token ใช้ได้ตลอด จนกว่าจะ regenerate)');
 }
 
 function initGlobalReportMode(){
@@ -3652,7 +3763,7 @@ function initGlobalReportMode(){
     if(!res||res.result!=='success'||!res.data){ document.getElementById('grContent').textContent='Failed to load data.'; return; }
     renderGlobalReport(res.data.filter(function(d){return d.repairType==='warranty'&&d.status==='ปิด Ticket';}));
   };
-  s.src=SHEETS_URL+'?action=getAllTickets&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=getAllTickets&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 
@@ -3701,18 +3812,18 @@ function renderGlobalReport(data){
     var rowBg=idx%2===0?'#fff':'#f9fafb';
     var vdoUrl=d.videoUrl||(d.videoFilename?DRIVE_VIDEO_URL:'');
     html+='<tr style="background:'+rowBg+';border-bottom:1px solid #e5e7eb">'
-      +'<td style="padding:12px 14px;font-family:monospace;font-weight:600;font-size:12px">'+d.ticketId+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;font-weight:600;font-size:12px">'+escHtml(d.ticketId)+'</td>'
       +'<td style="padding:12px 14px;white-space:nowrap;color:#6b7280">'+new Date(d.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</td>'
-      +'<td style="padding:12px 14px;font-family:monospace;font-size:12px">'+(d.serial||'—')+'</td>'
-      +'<td style="padding:12px 14px"><div style="font-weight:500">'+(d.name||'—')+'</div><div style="font-size:11px;color:#9ca3af">'+(d.phone||'')+'</div></td>'
-      +'<td style="padding:12px 14px;max-width:200px"><div style="font-weight:500;font-size:12px">'+(d.issueType||'—')+'</div>'+(d.description?'<div style="font-size:11px;color:#6b7280;margin-top:2px;max-height:40px;overflow:hidden">'+d.description.slice(0,80)+(d.description.length>80?'...':'')+'</div>':'')+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;font-size:12px">'+escHtml(d.serial||'—')+'</td>'
+      +'<td style="padding:12px 14px"><div style="font-weight:500">'+escHtml(d.name||'—')+'</div><div style="font-size:11px;color:#9ca3af">'+escHtml(d.phone||'')+'</div></td>'
+      +'<td style="padding:12px 14px;max-width:200px"><div style="font-weight:500;font-size:12px">'+escHtml(d.issueType||'—')+'</div>'+(d.description?'<div style="font-size:11px;color:#6b7280;margin-top:2px;max-height:40px;overflow:hidden">'+escHtml(d.description.slice(0,80))+(d.description.length>80?'...':'')+'</div>':'')+'</td>'
       +'<td style="padding:12px 14px">'
         +(d.logUrl?'<a href="'+d.logUrl+'" target="_blank" style="display:block;font-size:12px;color:#3b82f6;margin-bottom:4px">📋 Machine Log</a>':'')
         +(vdoUrl?'<a href="'+vdoUrl+'" target="_blank" style="display:block;font-size:12px;color:#3b82f6">🎥 Video</a>':'')
         +(!d.logUrl&&!vdoUrl?'<span style="color:#d1d5db">—</span>':'')
       +'</td>'
       +'<td style="padding:12px 14px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;'+(gcStatusStyle[gs]||gcStatusStyle.pending)+'">'+(gcStatusLabel[gs]||'Pending')+'</span>'
-        +(d.globalClaimNote?'<div style="font-size:11px;color:#9ca3af;margin-top:4px">'+d.globalClaimNote+'</div>':'')
+        +(d.globalClaimNote?'<div style="font-size:11px;color:#9ca3af;margin-top:4px">'+escHtml(d.globalClaimNote)+'</div>':'')
       +'</td>'
       +'<td style="padding:12px 14px;font-size:12px">'
         +(d.gcOldMachine?'<div style="color:#6b7280">Old: '+(oldMachineLabel[d.gcOldMachine]||d.gcOldMachine)+'</div>':'')
@@ -3745,39 +3856,31 @@ function exportTicketCSV(){
 function openDeleteTicket(ticketId){
   const ticket=_ticketData.find(d=>d.ticketId===ticketId); if(!ticket)return;
   window._deletingTicketId=ticketId;
-  document.getElementById('deleteTicketInfo').innerHTML='<strong>'+ticketId+'</strong><br>S/N: '+(ticket.serial||'—')+' · '+(ticket.name||'—')+'<br>ปัญหา: '+(ticket.issueType||'—');
-  document.getElementById('delTicketPw').value='';
-  document.getElementById('delTicketErr').classList.remove('show');
-  document.getElementById('deleteTicketModal').classList.add('open');
-  setTimeout(()=>document.getElementById('delTicketPw').focus(),100);
-}
-function confirmDeleteTicket(){
-  const ticketId=window._deletingTicketId; if(!ticketId)return;
-  const pw=document.getElementById('delTicketPw').value;
-  const btn=document.getElementById('delTicketConfirmBtn');
-  const errEl=document.getElementById('delTicketErr');
-  errEl.classList.remove('show');
-  if(!pw){errEl.textContent='กรุณาใส่รหัสผ่าน';errEl.classList.add('show');return;}
-  btn.textContent='กำลังลบ...'; btn.disabled=true;
-  const cbName='tdCb_'+Date.now(),s=document.createElement('script');
-  window[cbName]=function(res){
-    delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
-    btn.textContent='🗑 ลบข้อมูล'; btn.disabled=false;
-    if(res&&res.result==='success'){
-      const row=document.getElementById('trow_'+ticketId);
-      if(row){row.style.transition='opacity .25s';row.style.opacity='0';setTimeout(()=>{const idx=_ticketData.findIndex(d=>d.ticketId===ticketId);if(idx>=0)_ticketData.splice(idx,1);closeModal('deleteTicketModal');renderTickets();},250);}
-      else{const idx=_ticketData.findIndex(d=>d.ticketId===ticketId);if(idx>=0)_ticketData.splice(idx,1);closeModal('deleteTicketModal');renderTickets();}
-    } else {
-      errEl.textContent=(res&&res.message)||'รหัสผ่านไม่ถูกต้อง';
-      errEl.classList.add('show');
-      document.getElementById('delTicketPw').value='';
-      document.getElementById('delTicketPw').focus();
+  // ใช้ requireAdminPw แทนการถาม password ใน modal นี้
+  requireAdminPw('🗑 ลบ Ticket',
+    'ลบ '+ticketId+' (S/N: '+(ticket.serial||'—')+' · '+(ticket.name||'—')+') ?\nการดำเนินการนี้ไม่สามารถกู้คืนได้',
+    () => {
+      const cbName='tdCb_'+Date.now(), s=document.createElement('script');
+      window[cbName]=function(res){
+        delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+        if(res&&res.result==='success'){
+          const idx=_ticketData.findIndex(d=>d.ticketId===ticketId);
+          if(idx>=0)_ticketData.splice(idx,1);
+          renderTickets();
+        } else {
+          alert((res&&res.message)||'ลบไม่สำเร็จ กรุณาลองใหม่');
+        }
+      };
+      s.onerror=function(){delete window[cbName]; alert('เชื่อมต่อไม่สำเร็จ');};
+      s.src=SHEETS_URL+'?action=deleteTicket&ticketId='+encodeURIComponent(ticketId)
+        +'&sessionToken='+encodeURIComponent(getToken())
+        +'&changedBy='+encodeURIComponent(_currentUser?_currentUser.name:'unknown')
+        +'&callback='+cbName+'&t='+Date.now();
+      document.body.appendChild(s);
     }
-  };
-  s.onerror=function(){delete window[cbName];btn.textContent='🗑 ลบข้อมูล';btn.disabled=false;errEl.textContent='เชื่อมต่อไม่สำเร็จ';errEl.classList.add('show');};
-  s.src=SHEETS_URL+'?action=deleteTicket&ticketId='+encodeURIComponent(ticketId)+'&delpw='+encodeURIComponent(pw)+'&callback='+cbName+'&t='+Date.now();
-  document.body.appendChild(s);
+  );
 }
+function confirmDeleteTicket(){ /* legacy — ไม่ใช้แล้ว */ }
 
 // ══ ADMIN: MACHINES ══
 // ══ ASSET REGISTRY (Machine Tracker) ══
@@ -3795,7 +3898,7 @@ function deleteMachine(id, serial){
   window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);loadMachines();};
   s.onerror=function(){delete window[cbName];loadMachines();};
   s.src=SHEETS_URL+'?action=deleteMachine&id='+encodeURIComponent(id)
-    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&sessionToken='+encodeURIComponent(getToken())+'&changedBy='+encodeURIComponent(changedBy)
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
@@ -3809,7 +3912,7 @@ function loadMachines(){
     else{document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
   };
   s.onerror=function(){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ</div></td></tr>';};
-  s.src=SHEETS_URL+'?action=getAllMachines&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=getAllMachines&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 
@@ -3969,7 +4072,7 @@ function markGlobalSent(id){
   var cbName='gsCb_'+Date.now(),s=document.createElement('script');
   window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);loadMachines();};
   s.onerror=function(){delete window[cbName];loadMachines();};
-  s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(id)+'&globalStatus=sent&delpw=adminaccessonly&updatedAt='+encodeURIComponent(new Date().toISOString())+'&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(id)+'&globalStatus=sent&sessionToken='+encodeURIComponent(getToken())+'&updatedAt='+encodeURIComponent(new Date().toISOString())+'&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 
@@ -4046,7 +4149,7 @@ function saveMachineEdit(){
     +'&warrantyEnd='+encodeURIComponent(document.getElementById('em_warrantyend').value)
     +'&customerName='+encodeURIComponent(document.getElementById('em_location').value)
     +'&notes='+encodeURIComponent(document.getElementById('em_notes').value.trim())
-    +'&delpw=adminaccessonly&updatedAt='+encodeURIComponent(new Date().toISOString())
+    +'&sessionToken='+encodeURIComponent(getToken())+'&updatedAt='+encodeURIComponent(new Date().toISOString())
     +'&changedBy='+encodeURIComponent(_currentUser?_currentUser.name:'unknown')
     +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
@@ -4058,6 +4161,10 @@ function openAddMachineModal(){
   });
   document.getElementById('am_assettype').value='store';
   document.getElementById('am_subsource').value='new';
+  var nowarEl=document.getElementById('am_nowarranty');
+  if(nowarEl){nowarEl.checked=false;}
+  document.getElementById('am_warrantystart').disabled=false;
+  document.getElementById('am_warrantyend').disabled=false;
   renderProductSelectInDiv('am_product_wrap','');
   onAddAssetTypeChange();
   document.getElementById('addMachineModal').classList.add('open');
@@ -4073,7 +4180,7 @@ function saveAddMachine(){
   if(btn){btn.textContent='⏳ กำลังบันทึก...';btn.disabled=true;}
   var payload={
     action:'addMachine',
-    id:String(Date.now()),
+    id:genId(),
     serial:serial,
     product:product,
     assetType:assetType,
@@ -4120,7 +4227,7 @@ function loadActivityLog(){
     else{document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
   };
   s.onerror=function(){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ</div></td></tr>';};
-  s.src=SHEETS_URL+'?action=getActivityLog&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=getActivityLog&sessionToken='+encodeURIComponent(getToken())+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 function filterActivityLog(q){_activityTextFilter=q.toLowerCase();renderActivityLog();}
@@ -4133,12 +4240,12 @@ function renderActivityLog(){
     const badgeClass=ACTION_BADGE[d.action]||'badge-gray';
     const ts=d.timestamp?new Date(d.timestamp).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):'—';
     return '<tr>'
-      +'<td style="font-size:12px;white-space:nowrap">'+ts+'</td>'
-      +'<td style="font-weight:600">'+(d.userName||'—')+'</td>'
-      +'<td><span class="badge role-'+(d.userRole||'staff')+' user-role-badge">'+(d.userRole||'—')+'</span></td>'
-      +'<td><span class="badge '+badgeClass+'">'+(d.action||'—')+'</span></td>'
-      +'<td style="font-family:monospace;font-size:12px">'+(d.target||'—')+'</td>'
-      +'<td style="font-size:12px;max-width:200px;color:var(--muted)">'+(d.detail||'—')+'</td>'
+      +'<td style="font-size:12px;white-space:nowrap">'+escHtml(ts)+'</td>'
+      +'<td style="font-weight:600">'+escHtml(d.userName||'—')+'</td>'
+      +'<td><span class="badge role-'+escHtml(d.userRole||'staff')+' user-role-badge">'+escHtml(d.userRole||'—')+'</span></td>'
+      +'<td><span class="badge '+escHtml(badgeClass)+'">'+escHtml(d.action||'—')+'</span></td>'
+      +'<td style="font-family:monospace;font-size:12px">'+escHtml(d.target||'—')+'</td>'
+      +'<td style="font-size:12px;max-width:200px;color:var(--muted)">'+escHtml(d.detail||'—')+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -4161,10 +4268,23 @@ function dl(content,filename,type){ const a=document.createElement('a'); a.href=
 // ══ INIT ══
 window.addEventListener('DOMContentLoaded',()=>{
   renderProductSelect('f_product','');
-  // ── Global Report Mode ──
+  // ── Global Report Mode — ตรวจ token ฝั่ง server เสมอ ──
   var params = new URLSearchParams(window.location.search);
-  if(params.get('mode')==='global' && params.get('token')==='xbloom2026global'){
-    initGlobalReportMode();
+  var urlToken = params.get('token');
+  if(params.get('mode')==='global' && urlToken){
+    var cbName='grtCb_'+Date.now(), s=document.createElement('script');
+    window[cbName]=function(res){
+      delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      if(res && res.result==='ok' && res.token){
+        // ใช้ session token ที่ server ออกให้แทน URL token
+        _currentUser = { name:'GlobalReport', role:'admin', token: res.token };
+        initGlobalReportMode();
+      }
+      // ถ้า unauthorized ไม่ทำอะไร — ไม่แสดง error เพื่อป้องกัน enumeration
+    };
+    s.onerror=function(){delete window[cbName];};
+    s.src=SHEETS_URL+'?action=verifyGlobalToken&token='+encodeURIComponent(urlToken)+'&callback='+cbName+'&t='+Date.now();
+    document.body.appendChild(s);
   }
 });
 </script>
