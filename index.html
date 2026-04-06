@@ -649,6 +649,10 @@ tbody tr:hover td { background: #fafaf8; }
       <div class="field"><label>วันหมดประกัน</label>
         <input type="date" id="em_warrantyend" /></div>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:-6px 0 10px;padding:8px 12px;background:var(--bg);border-radius:8px">
+      <input type="checkbox" id="em_nowarranty" onchange="document.getElementById('em_warrantystart').disabled=this.checked;document.getElementById('em_warrantyend').disabled=this.checked" style="width:16px;height:16px;cursor:pointer" />
+      <label for="em_nowarranty" style="font-size:13px;cursor:pointer;color:var(--text)">⚠️ ไม่มีประกัน (เครื่องซ่อมจากเคลม)</label>
+    </div>
 
     <!-- ที่ใช้งาน / ลูกค้า -->
     <div class="field"><label>ที่ใช้งาน / ลูกค้า</label>
@@ -696,6 +700,10 @@ tbody tr:hover td { background: #fafaf8; }
         <input type="date" id="am_warrantystart" /></div>
       <div class="field"><label>วันหมดประกัน</label>
         <input type="date" id="am_warrantyend" /></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:-6px 0 10px;padding:8px 12px;background:var(--bg);border-radius:8px">
+      <input type="checkbox" id="am_nowarranty" onchange="document.getElementById('am_warrantystart').disabled=this.checked;document.getElementById('am_warrantyend').disabled=this.checked" style="width:16px;height:16px;cursor:pointer" />
+      <label for="am_nowarranty" style="font-size:13px;cursor:pointer;color:var(--text)">⚠️ ไม่มีประกัน (เครื่องซ่อมจากเคลม)</label>
     </div>
     <div class="field"><label>ที่ใช้งาน / ลูกค้า</label>
       <input type="text" id="am_location" placeholder="เช่น ร้านสาขา Siam" /></div>
@@ -1482,7 +1490,7 @@ function submitForm(){
   const purchaseDt=new Date(v('f_purchasedate')+'T00:00:00');
   const expiryDt=new Date(purchaseDt); expiryDt.setFullYear(expiryDt.getFullYear()+2);
   const entry={
-    id:Date.now(), registeredAt:new Date().toISOString(),
+    id:Date.now(), registeredAt:nowTH(),
     serial:v('f_serial'), product:v('f_product'), company:v('f_company'),
     purchaseDate:v('f_purchasedate'), expiryDate:fmtDate(expiryDt.toISOString().slice(0,10)),
     name:v('f_name'), phone:v('f_phone').replace(/[^0-9]/g,''), email:v('f_email'),
@@ -1756,7 +1764,7 @@ function submitTicket(){
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'createTicket',
-        ticketId, createdAt: new Date().toISOString(),
+        ticketId, createdAt: nowTH(),
         serial, name, phone: phone_clean, email, lineId: lineid,
         issueType: issuetype, description: desc,
         logUrl: logurl, repairType: repairtype,
@@ -2047,15 +2055,18 @@ function renderWarranties(){
         warrantyBadge=`<span class="badge" style="background:#f3e8ff;color:#7c3aed;font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">🔄 เครื่องทดแทน</span>`
           +(fromSN?`<br><span style="font-size:10px;color:#9333ea;font-family:'DM Sans',sans-serif">จาก S/N: ${fromSN}</span>`:'');
       } else if(d.expiryDate){
-        const parts=d.expiryDate.split('/');
-        if(parts.length===3){
-          const expDt=new Date(parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0')+'T23:59:59');
+        // parseDateFlexible รับได้ทั้ง DD/MM/YYYY และ YYYY-MM-DD
+        const expDt=parseDateFlexible(d.expiryDate);
+        if(expDt&&!isNaN(expDt.getTime())){
           const daysLeft=Math.round((expDt-new Date())/864e5);
           if(daysLeft>30) warrantyBadge=`<span class="badge badge-green" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">✅ อยู่ในประกัน</span>`;
           else if(daysLeft>=0) warrantyBadge=`<span class="badge badge-orange" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">⚠ ใกล้หมด ${daysLeft} วัน</span>`;
           else warrantyBadge=`<span class="badge badge-red" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">❌ หมดประกัน</span>`;
         }
       }
+
+      const pct=calcWarrantyPct(d.purchaseDate, d.expiryDate);
+      const wBar=warrantyBar(pct);
 
       const rowStyle = isRepl ? 'style="background:#faf5ff"' : '';
       return '<tr id="wrow_'+d.id+'" '+rowStyle+'>'
@@ -2064,7 +2075,7 @@ function renderWarranties(){
         +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.serial||'—')+'<br>'+warrantyBadge+'</td>'
         +'<td>'+(d.product||'—')+'</td>'
         +'<td>'+(d.company||'—')+'</td>'
-        +'<td style="white-space:nowrap">'+(d.purchaseDate||'—')+'</td>'
+        +'<td style="white-space:nowrap;min-width:130px">'+(d.purchaseDate||'—')+'<br><div style="margin-top:4px">'+wBar+'</div></td>'
         +'<td>'+(d.name||'—')+'</td>'
         +'<td style="white-space:nowrap">'+(d.phone||'—')+'</td>'
         +'<td>'+(d.email||'—')+'</td>'
@@ -3184,37 +3195,33 @@ function saveTicketEdit(){
 
 function markMachineAsClaimFixed(serial, ticketId, changedBy){
   if(!serial) return;
-  var machine=_machineData.find(function(m){
-    return (m.serial||'').toLowerCase()===serial.toLowerCase()
-      ||(m.newSerial||'').toLowerCase()===serial.toLowerCase();
-  });
-  var now=new Date().toISOString();
-  if(machine){
-    // อัปเดต existing record
-    var cbName='cfCb_'+Date.now(),s=document.createElement('script');
-    window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);};
-    s.onerror=function(){delete window[cbName];};
-    s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(machine.id)
-      +'&status=claim_fixed&assetType=claim_fixed&subscriptionSource=from_claim'
-      +'&delpw=adminaccessonly&updatedAt='+encodeURIComponent(now)
-      +'&changedBy='+encodeURIComponent(changedBy)
-      +'&callback='+cbName+'&t='+Date.now();
-    document.body.appendChild(s);
-  } else {
-    // ไม่มี record → สร้างใหม่
-    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({
-      action:'addMachine',
-      id:String(Date.now()),
-      serial:serial,
-      product:'',
-      assetType:'claim_fixed',
-      status:'claim_fixed',
-      subscriptionSource:'from_claim',
-      notes:'ซ่อมเสร็จ (RC Ticket: '+ticketId+')',
-      updatedAt:now,
-      source:'repair_claim_closed'
-    })});
+  // หา original warranty ticket เพื่อดึง S/N เดิม + ชื่อลูกค้า
+  var origSN='', customerName='';
+  if(ticketId){
+    var origId=ticketId.replace('RC-','TK-');
+    var origTicket=_ticketData.find(function(t){return t.ticketId===origId;});
+    if(origTicket){
+      origSN=origTicket.serial||'';
+      customerName=origTicket.name||'';
+    }
+    // ถ้าไม่มี TK ให้หาจาก RC ticket โดยตรง
+    if(!origSN){
+      var rcTicket=_ticketData.find(function(t){return t.ticketId===ticketId;});
+      if(rcTicket) customerName=rcTicket.name||'';
+    }
   }
+  var cbName='cfCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);};
+  s.onerror=function(){delete window[cbName];};
+  s.src=SHEETS_URL+'?action=upsertMachineClaimFixed'
+    +'&serial='+encodeURIComponent(serial)
+    +'&ticketId='+encodeURIComponent(ticketId)
+    +'&origSN='+encodeURIComponent(origSN)
+    +'&customerName='+encodeURIComponent(customerName)
+    +'&changedBy='+encodeURIComponent(changedBy)
+    +'&delpw=adminaccessonly'
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
 }
 
 // Backward compat alias
@@ -3224,25 +3231,31 @@ function markMachineAsSubscription(serial, changedBy){
 
 
 function autoCreateRepairClaimTicket(ticket, changedBy){
-  // สร้าง repair_claim ticket อัตโนมัติ
   var repairTicketId='RC-'+ticket.ticketId.replace('TK-','');
+  // สร้าง description ที่รวมข้อมูลต้นทางทั้งหมด
+  var origDesc='';
+  if(ticket.issueType) origDesc+='ปัญหา: '+ticket.issueType+'\n';
+  if(ticket.description) origDesc+=ticket.description+'\n';
+  origDesc+='(อ้างอิง: '+ticket.ticketId+')';
+
   fetch(SHEETS_URL,{
     method:'POST', mode:'no-cors',
     headers:{'Content-Type':'text/plain'},
     body:JSON.stringify({
       action:'createTicket',
       ticketId:repairTicketId,
-      createdAt:new Date().toISOString(),
+      createdAt:nowTH(),
       serial:ticket.serial,
       name:ticket.name,
       phone:ticket.phone||'',
       email:ticket.email||'',
       lineId:ticket.lineId||'',
       issueType:'ซ่อมเครื่องเก่าหลังเคลม (อ้างอิง: '+ticket.ticketId+')',
-      description:'สร้างอัตโนมัติจาก warranty claim ticket: '+ticket.ticketId,
-      logUrl:'',
+      description:origDesc,
+      logUrl:ticket.logUrl||'',
+      videoFilename:ticket.videoFilename||'',
+      videoUrl:ticket.videoUrl||'',
       repairType:'repair_claim',
-      videoFilename:'', videoUrl:'',
       status:'รับเรื่องแล้ว'
     })
   }).catch(function(){});
@@ -3775,6 +3788,18 @@ const ASSET_TYPE_COLOR={'store':'#7c3aed','claim_fixed':'#d97706','subscription'
 const ASSET_TYPE_BG={'store':'#f5f3ff','claim_fixed':'#fffbeb','subscription':'#f0fdf4'};
 const SUB_SOURCE_LABEL={'from_claim':'จาก Claim','new':'New','other':'อื่นๆ'};
 
+function deleteMachine(id, serial){
+  if(!confirm('ลบ Asset S/N "'+serial+'" ออกจากระบบ?\nการดำเนินการนี้ไม่สามารถกู้คืนได้'))return;
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+  var cbName='dmCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);loadMachines();};
+  s.onerror=function(){delete window[cbName];loadMachines();};
+  s.src=SHEETS_URL+'?action=deleteMachine&id='+encodeURIComponent(id)
+    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
 function loadMachines(){
   document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
   var cbName='mAdminCb_'+Date.now(),s=document.createElement('script'),done={v:false};
@@ -3888,6 +3913,10 @@ function renderMachines(){
 
   if(!data.length){document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">ไม่มีข้อมูลในกลุ่มนี้</div></td></tr>';return;}
 
+  // Detect duplicate S/N
+  var snCount={};
+  data.forEach(function(d){ var sn=(d.serial||'').toLowerCase(); snCount[sn]=(snCount[sn]||0)+1; });
+
   document.getElementById('machineTableBody').innerHTML=data.map(function(d,i){
     var assetType=d.assetType||d.status||'';
     var assetLabel=ASSET_TYPE_LABEL[assetType]||assetType||'—';
@@ -3898,9 +3927,14 @@ function renderMachines(){
     var subSrc=d.subscriptionSource
       ?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(SUB_SOURCE_LABEL[d.subscriptionSource]||d.subscriptionSource)+'</div>':'';
 
-    // Warranty %
-    var pct=calcWarrantyPct(d.warrantyStart||d.purchaseDate,d.warrantyEnd||d.expiryDate);
-    var wBar=warrantyBar(pct);
+    // Warranty % — show "ไม่มีประกัน" if checked or no dates
+    var noWar=d.noWarranty==='1'||d.noWarranty===true||d.noWarranty==='true';
+    var pct = noWar
+      ? 'none'
+      : calcWarrantyPct(d.warrantyStart||d.purchaseDate,d.warrantyEnd||d.expiryDate);
+    var wBar = pct==='none'
+      ? '<div style="font-size:11px;background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:20px;display:inline-block">⚠️ ไม่มีประกัน</div>'
+      : warrantyBar(pct);
 
     // Global claim badge (claim_fixed or legacy claimed)
     var isGlobalClaim=(d.source||'').includes('warranty_claim')||d.status==='claimed'||assetType==='claim_fixed';
@@ -3911,16 +3945,19 @@ function renderMachines(){
         :'<button class="edit-btn" style="font-size:10px" onclick="markGlobalSent(this.dataset.id)" data-id="'+d.id+'">ส่ง Global</button>')
       :'';
 
-    return '<tr>'
+    var isDup=(snCount[(d.serial||'').toLowerCase()]||0)>1;
+    var dupBadge=isDup?'<span style="background:#fee2e2;color:#dc2626;font-size:9px;padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:600">ซ้ำ</span>':'';
+    return '<tr style="'+(isDup?'background:#fffbeb':'')+'">'
       +'<td>'+(i+1)+'</td>'
-      +'<td style="font-family:monospace;font-size:13px;font-weight:700">'+(d.serial||'—')+'</td>'
+      +'<td style="font-family:monospace;font-size:13px;font-weight:700">'+(d.serial||'—')+dupBadge+'</td>'
       +'<td style="font-size:12px">'+(d.product||'—')+'</td>'
       +'<td><div style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:'+assetBg+';color:'+assetColor+'">'+assetLabel+'</div>'+subSrc+globalBadge+'</td>'
       +'<td style="font-size:12px">'+(d.customerName||d.location||'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="min-width:120px">'+wBar+'</td>'
       +'<td style="font-size:12px;max-width:160px">'+(d.notes||'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="font-size:12px;white-space:nowrap">'+(d.updatedAt?new Date(d.updatedAt).toLocaleDateString('th-TH'):'—')+'</td>'
-      +'<td><button class="edit-btn" onclick="openMachineEdit(this.dataset.id)" data-id="'+d.id+'">✏️</button></td>'
+      +'<td><button class="edit-btn" onclick="openMachineEdit(this.dataset.id)" data-id="'+d.id+'">✏️</button>'
+      +' <button class="del-btn" onclick="deleteMachine(this.dataset.id,\''+( d.serial||'').replace(/'/g,"\\'")+'\')" data-id="'+d.id+'">🗑</button></td>'
       +'</tr>';
   }).join('');
 }
@@ -3945,6 +3982,14 @@ function onAddAssetTypeChange(){
   document.getElementById('amSubscriptionFields').style.display=v==='subscription'?'block':'none';
 }
 
+function nowTH(){
+  // คืน ISO string ของเวลาปัจจุบันในเขตเวลาประเทศไทย (UTC+7)
+  var d=new Date();
+  var offset=7*60; // นาที
+  var local=new Date(d.getTime()+offset*60000);
+  return local.toISOString().replace('Z','+07:00');
+}
+
 function toInputDate(str){
   if(!str)return '';
   str=String(str).trim();
@@ -3966,6 +4011,14 @@ function openMachineEdit(id){
   document.getElementById('em_subsource').value=machine.subscriptionSource||'';
   document.getElementById('em_warrantystart').value=toInputDate(machine.warrantyStart||machine.purchaseDate||'');
   document.getElementById('em_warrantyend').value=toInputDate(machine.warrantyEnd||machine.expiryDate||'');
+  var noWar=machine.noWarranty==='1'||machine.noWarranty===true||machine.noWarranty==='true';
+  // ถ้าไม่มี field noWarranty แต่ไม่มีวันประกัน (เคสเก่า) ให้ auto-tick
+  if(!noWar && !machine.warrantyStart && !machine.purchaseDate && (machine.assetType==='claim_fixed' || machine.subscriptionSource==='from_claim')){
+    // ไม่ auto-tick เพื่อไม่รบกวน record ที่ยังไม่ได้ใส่วัน
+  }
+  document.getElementById('em_nowarranty').checked=noWar;
+  document.getElementById('em_warrantystart').disabled=noWar;
+  document.getElementById('em_warrantyend').disabled=noWar;
   document.getElementById('em_location').value=machine.location||machine.customerName||'';
   document.getElementById('em_notes').value=machine.notes||'';
   onAssetTypeChange();
@@ -3988,7 +4041,8 @@ function saveMachineEdit(){
     +'&assetType='+encodeURIComponent(assetType)
     +'&status='+encodeURIComponent(assetType)
     +'&subscriptionSource='+encodeURIComponent(document.getElementById('em_subsource').value)
-    +'&warrantyStart='+encodeURIComponent(document.getElementById('em_warrantystart').value)
+    +'&noWarranty='+encodeURIComponent(document.getElementById('em_nowarranty').checked?'1':'')
+    +'&warrantyStart='+encodeURIComponent(document.getElementById('em_nowarranty').checked?'':document.getElementById('em_warrantystart').value)
     +'&warrantyEnd='+encodeURIComponent(document.getElementById('em_warrantyend').value)
     +'&customerName='+encodeURIComponent(document.getElementById('em_location').value)
     +'&notes='+encodeURIComponent(document.getElementById('em_notes').value.trim())
@@ -4025,7 +4079,8 @@ function saveAddMachine(){
     assetType:assetType,
     status:assetType,
     subscriptionSource:document.getElementById('am_subsource').value,
-    warrantyStart:document.getElementById('am_warrantystart').value,
+    noWarranty:document.getElementById('am_nowarranty').checked?'1':'',
+    warrantyStart:document.getElementById('am_nowarranty').checked?'':document.getElementById('am_warrantystart').value,
     warrantyEnd:document.getElementById('am_warrantyend').value,
     customerName:document.getElementById('am_location').value.trim(),
     notes:document.getElementById('am_notes').value.trim(),
