@@ -264,6 +264,18 @@ tbody tr:hover td { background: #fafaf8; }
 .pm-add-btn { padding: 9px 16px; background: var(--accent); color: #fff; border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .2s; }
 .pm-add-btn:hover { background: #333; }
 
+/* ── User Bar ── */
+.user-bar { display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:12px; padding:10px 16px; margin-bottom:20px; box-shadow:var(--shadow); }
+.user-bar-left { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:32px; height:32px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; }
+.user-name { font-size:14px; font-weight:600; color:var(--text); }
+.user-role-badge { font-size:10px; font-weight:500; padding:2px 8px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; }
+.role-admin { background:#f0f4ff; color:#3355cc; }
+.role-staff { background:#e8f5ef; color:var(--green); }
+.role-technician { background:#fff3e0; color:var(--orange); }
+.logout-btn { font-size:12px; color:var(--muted); padding:6px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; background:transparent; font-family:'DM Sans',sans-serif; transition:all .15s; }
+.logout-btn:hover { border-color:var(--red); color:var(--red); }
+
 .date-wrap { position: relative; }
 .date-wrap input { padding-right: 40px; cursor: pointer; }
 .cal-icon { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
@@ -271,13 +283,16 @@ tbody tr:hover td { background: #fafaf8; }
 </head>
 <body>
 
-<!-- ── Password Modal ── -->
+<!-- ── User Login Modal ── -->
 <div class="modal-overlay" id="pwModal">
   <div class="modal">
-    <h3>🔒 Admin Access</h3>
-    <p>กรุณาใส่รหัสผ่านเพื่อเข้าถึงระบบหลังบ้าน</p>
-    <input type="password" id="pwInput" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')checkPw()" />
-    <div class="modal-error" id="pwErr">รหัสผ่านไม่ถูกต้อง</div>
+    <h3>🔒 เข้าสู่ระบบ</h3>
+    <p>กรุณาระบุชื่อและ PIN ของคุณ</p>
+    <input type="text" id="loginName" placeholder="ชื่อ (เช่น Admin, Nan, Toon...)" autocomplete="off"
+           onkeydown="if(event.key==='Enter')document.getElementById('loginPin').focus()" style="margin-bottom:10px" />
+    <input type="password" id="loginPin" placeholder="PIN (4 หลัก)" maxlength="4" inputmode="numeric"
+           onkeydown="if(event.key==='Enter')checkPw()" />
+    <div class="modal-error" id="pwErr">ชื่อหรือ PIN ไม่ถูกต้อง</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('pwModal')">ยกเลิก</button>
       <button class="modal-confirm" id="pwSubmitBtn" onclick="checkPw()">เข้าสู่ระบบ</button>
@@ -318,35 +333,248 @@ tbody tr:hover td { background: #fafaf8; }
 <!-- ── Edit Ticket Modal ── -->
 <div class="modal-overlay" id="editTicketModal">
   <div class="modal modal-wide">
-    <h3>🎫 อัปเดต Ticket</h3>
-    <div id="etTicketInfo" style="font-size:13px;color:var(--muted);margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:8px;"></div>
-    <div class="field"><label>สถานะ <span class="req">*</span></label>
-      <div class="select-wrap"><select id="et_status">
-        <optgroup label="🛡 ในประกัน (เคลมเครื่องใหม่)">
-          <option value="ตรวจสอบสิทธิ์ประกัน">ตรวจสอบสิทธิ์ประกัน</option>
-          <option value="อนุมัติการเคลม">อนุมัติการเคลม</option>
-          <option value="จัดส่งเครื่องใหม่ให้ลูกค้า">จัดส่งเครื่องใหม่ให้ลูกค้า</option>
-          <option value="รับเครื่องเก่าคืน">รับเครื่องเก่าคืน</option>
-          <option value="ซ่อมเครื่องเก่า (Subscription)">ซ่อมเครื่องเก่า (Subscription)</option>
-        </optgroup>
-        <optgroup label="🔧 หมดประกัน (ซ่อมปกติ)">
-          <option value="รับเรื่องแล้ว">รับเรื่องแล้ว</option>
-          <option value="ตรวจสอบอาการ">ตรวจสอบอาการ</option>
-          <option value="แจ้งค่าใช้จ่าย">แจ้งค่าใช้จ่าย</option>
-          <option value="ลูกค้าอนุมัติ">ลูกค้าอนุมัติ</option>
-          <option value="กำลังซ่อม">กำลังซ่อม</option>
-          <option value="ซ่อมเสร็จแล้ว">ซ่อมเสร็จแล้ว</option>
-          <option value="ส่งคืนลูกค้าแล้ว">ส่งคืนลูกค้าแล้ว</option>
-        </optgroup>
-        <option value="ปิด Ticket">🏁 ปิด Ticket</option>
+    <h3 id="etModalTitle">🎫 อัปเดต Ticket</h3>
+    <div id="etTicketInfo" style="font-size:13px;color:var(--muted);margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:8px;line-height:1.8"></div>
+
+    <!-- Machine History -->
+    <div id="etMachineHistory" style="display:none;margin-bottom:12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;font-size:12px">
+      <div style="font-size:11px;font-weight:600;color:#15803d;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📦 ประวัติเครื่องของลูกค้า</div>
+      <div id="etMachineChain" style="color:#166534;line-height:2"></div>
+    </div>
+
+    <!-- ══ WARRANTY STEPPER (แสดงเฉพาะ warranty ticket) ══ -->
+    <div id="etWarrantyStepper" style="display:none">
+
+      <!-- Progress bar -->
+      <div id="etStepProgress" style="display:flex;align-items:center;margin-bottom:20px;gap:0"></div>
+
+      <!-- Step content (rendered dynamically) -->
+      <div id="etStepContent"></div>
+
+      <!-- Hidden status input -->
+      <input type="hidden" id="et_status" />
+      <input type="hidden" id="et_newserial" />
+      <input type="hidden" id="et_approvedby" />
+      <input type="hidden" id="et_trackinglink" />
+
+      <div id="etNewSerialStatus" style="margin-top:6px;font-size:12px;display:none"></div>
+
+      <div class="modal-btns" style="margin-top:20px">
+        <button class="modal-cancel" onclick="closeModal('editTicketModal')">ยกเลิก</button>
+        <button class="modal-confirm" id="etNextBtn" onclick="saveTicketEdit()">—</button>
+      </div>
+    </div>
+
+    <!-- ══ NORMAL TICKET FORM (dropdown) ══ -->
+    <div id="etNormalForm" style="display:none">
+      <div class="field"><label>สถานะ <span class="req">*</span></label>
+        <div class="select-wrap"><select id="et_status_normal" onchange="onTicketStatusChange()">
+          <optgroup label="🔧 หมดประกัน (ซ่อมปกติ)">
+            <option value="รับเรื่องแล้ว">รับเรื่องแล้ว</option>
+            <option value="ตรวจสอบอาการ">ตรวจสอบอาการ</option>
+            <option value="แจ้งค่าใช้จ่าย">แจ้งค่าใช้จ่าย</option>
+            <option value="ลูกค้าอนุมัติ">ลูกค้าอนุมัติ</option>
+            <option value="กำลังซ่อม">กำลังซ่อม</option>
+            <option value="ซ่อมเสร็จแล้ว">ซ่อมเสร็จแล้ว</option>
+            <option value="ส่งคืนลูกค้าแล้ว">ส่งคืนลูกค้าแล้ว</option>
+          </optgroup>
+          <option value="ปิด Ticket">🏁 ปิด Ticket</option>
+        </select></div>
+      </div>
+      <div class="field"><label>มอบหมายให้ (ช่าง/Staff)</label>
+        <div class="select-wrap"><select id="et_assigned"><option value="">— ยังไม่มอบหมาย —</option></select></div>
+      </div>
+      <div class="field"><label>หมายเหตุ Staff</label><textarea id="et_staffnote" placeholder="บันทึกภายใน..."></textarea></div>
+      <div class="field"><label>หมายเหตุช่าง</label><textarea id="et_technote" placeholder="สรุปผลการซ่อม..."></textarea></div>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="closeModal('editTicketModal')">ยกเลิก</button>
+        <button class="modal-confirm" onclick="saveTicketEdit()">💾 บันทึก</button>
+      </div>
+    </div>
+
+    <!-- ══ REPAIR CLAIM STEPPER ══ -->
+    <div id="etRepairClaimStepper" style="display:none">
+      <div id="etRcStepProgress" style="position:relative;display:flex;margin-bottom:20px"></div>
+      <div id="etRcStepContent"></div>
+      <div class="modal-btns" style="margin-top:20px">
+        <button class="modal-cancel" onclick="closeModal('editTicketModal')">ยกเลิก</button>
+        <button class="modal-confirm" id="etRcNextBtn" onclick="saveTicketEdit()">—</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Ticket Analysis Modal ── -->
+<div class="modal-overlay" id="ticketAnalysisModal">
+  <div class="modal modal-wide" style="max-height:90vh;overflow-y:auto;max-width:780px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0">📊 Ticket Analysis</h3>
+      <button class="del-btn" onclick="closeModal('ticketAnalysisModal')" style="font-size:16px">✕</button>
+    </div>
+    <!-- Date Range Filter -->
+    <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ตั้งแต่วันที่</div>
+        <input type="date" id="an_from" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px" />
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ถึงวันที่</div>
+        <input type="date" id="an_to" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px" />
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="filter-btn active" id="anRange_month" onclick="setAnalysisRange('month',this)">เดือนนี้</button>
+        <button class="filter-btn" id="anRange_3m" onclick="setAnalysisRange('3m',this)">3 เดือน</button>
+        <button class="filter-btn" id="anRange_year" onclick="setAnalysisRange('year',this)">ปีนี้</button>
+        <button class="filter-btn" id="anRange_all" onclick="setAnalysisRange('all',this)">ทั้งหมด</button>
+      </div>
+      <button class="modal-confirm" onclick="renderAnalysis()" style="padding:8px 20px;font-size:13px">🔍 วิเคราะห์</button>
+    </div>
+    <div id="analysisContent"></div>
+  </div>
+</div>
+
+<!-- ── Add Manual Case Modal ── -->
+<div class="modal-overlay" id="addManualCaseModal">
+  <div class="modal modal-wide" style="max-height:90vh;overflow-y:auto">
+    <h3>➕ เพิ่มเคสเคลมประกันย้อนหลัง</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">สำหรับเคสที่ปิดก่อนระบบนี้จะมี — ข้อมูลจะถูกบันทึกเป็น warranty ticket ที่ปิดแล้วและแสดงใน Global report</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+      <div class="field"><label>วันที่เปิด Ticket <span class="req">*</span></label>
+        <input type="date" id="mc_date" /></div>
+      <div class="field"><label>Ticket ID (ปล่อยว่างให้ระบบสร้าง)</label>
+        <input type="text" id="mc_ticketid" placeholder="TK-2025-xxxxxx" /></div>
+    </div>
+
+    <div style="border-top:1.5px solid var(--border);margin:10px 0 14px"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">ข้อมูลเครื่องและลูกค้า</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>S/N เครื่องเดิม <span class="req">*</span></label>
+        <input type="text" id="mc_serial" placeholder="เช่น J15A01B4BS000" autocapitalize="characters" /></div>
+      <div class="field"><label>S/N เครื่องใหม่ที่ส่งให้ลูกค้า</label>
+        <input type="text" id="mc_newserial" placeholder="เครื่องทดแทน" autocapitalize="characters" /></div>
+      <div class="field"><label>ชื่อลูกค้า <span class="req">*</span></label>
+        <input type="text" id="mc_name" placeholder="ชื่อ-นามสกุล" /></div>
+      <div class="field"><label>เบอร์โทร <span class="req">*</span></label>
+        <input type="text" id="mc_phone" placeholder="0812345678" /></div>
+      <div class="field"><label>อีเมล</label>
+        <input type="email" id="mc_email" placeholder="customer@email.com" /></div>
+      <div class="field"><label>Line ID</label>
+        <input type="text" id="mc_line" placeholder="@lineid" /></div>
+    </div>
+
+    <div style="border-top:1.5px solid var(--border);margin:10px 0 14px"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">ข้อมูลปัญหา</div>
+
+    <div class="field"><label>ประเภทปัญหา <span class="req">*</span></label>
+      <input type="text" id="mc_issue" placeholder="เช่น เครื่องไม่ทำงาน / หน้าจอมีปัญหา" /></div>
+    <div class="field"><label>รายละเอียด</label>
+      <textarea id="mc_description" placeholder="รายละเอียดปัญหาและการวินิจฉัย..." style="min-height:70px"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Machine Log URL</label>
+        <input type="url" id="mc_log" placeholder="https://..." /></div>
+      <div class="field"><label>VDO Link</label>
+        <input type="url" id="mc_vdo" placeholder="https://drive.google.com/..." /></div>
+    </div>
+    <div class="field"><label>อนุมัติโดย</label>
+      <input type="text" id="mc_approvedby" placeholder="ชื่อผู้อนุมัติ" /></div>
+
+    <div style="border-top:1.5px solid var(--border);margin:10px 0 14px"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">สถานะ Global Claim</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>สถานะ Global</label>
+        <div class="select-wrap"><select id="mc_gc_status" onchange="onMcGlobalStatusChange()">
+          <option value="pending">⏳ รอ Global ตอบรับ</option>
+          <option value="accepted">✅ Global รับเคลมแล้ว</option>
+          <option value="rejected">❌ Global ปฏิเสธ</option>
+        </select></div>
+      </div>
+      <div class="field"><label>หมายเหตุ Global</label>
+        <input type="text" id="mc_gc_note" placeholder="เหตุผล / หมายเหตุ" /></div>
+    </div>
+
+    <div id="mcAcceptedFields" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="field"><label>เครื่องเก่า</label>
+          <div class="select-wrap"><select id="mc_oldmachine">
+            <option value="">— ยังไม่ดำเนินการ —</option>
+            <option value="sent_back">✈️ ส่งคืน Global แล้ว</option>
+            <option value="kept_th">🏠 Global ฝากไว้ที่ Thailand</option>
+          </select></div>
+        </div>
+        <div class="field"><label>เครื่องใหม่</label>
+          <div class="select-wrap"><select id="mc_newmachine">
+            <option value="">— ยังไม่ได้รับ —</option>
+            <option value="in_lot">📋 รอรับใน Lot สั่ง</option>
+            <option value="received">✅ ได้รับแล้ว</option>
+          </select></div>
+        </div>
+        <div class="field"><label>Lot / PO Number</label>
+          <input type="text" id="mc_lot" placeholder="เช่น PO-2026-04" /></div>
+      </div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('addManualCaseModal')">ยกเลิก</button>
+      <button class="modal-confirm" onclick="saveManualCase()">💾 บันทึกเคสย้อนหลัง</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Global Claim Update Modal ── -->
+<div class="modal-overlay" id="globalClaimModal">
+  <div class="modal">
+    <h3>📋 อัปเดตสถานะ Global Claim</h3>
+    <div id="globalClaimTicketInfo" style="font-size:13px;color:var(--muted);margin-bottom:14px;background:var(--bg);padding:10px 12px;border-radius:8px;line-height:1.6"></div>
+
+    <div class="field"><label>สถานะจาก Global</label>
+      <div class="select-wrap"><select id="gc_status" onchange="onGlobalStatusChange()">
+        <option value="pending">⏳ รอ Global ตอบรับ</option>
+        <option value="accepted">✅ Global รับเคลมแล้ว</option>
+        <option value="rejected">❌ Global ปฏิเสธ</option>
       </select></div>
     </div>
-    <div class="field"><label>มอบหมายให้ (ช่าง/Staff)</label><input type="text" id="et_assigned" placeholder="ชื่อผู้รับผิดชอบ" /></div>
-    <div class="field"><label>หมายเหตุ Staff</label><textarea id="et_staffnote" placeholder="บันทึกภายใน..."></textarea></div>
-    <div class="field"><label>หมายเหตุช่าง</label><textarea id="et_technote" placeholder="สรุปผลการซ่อม..."></textarea></div>
+
+    <div class="field"><label>หมายเหตุ / เหตุผล</label>
+      <textarea id="gc_note" placeholder="เหตุผลที่ Global ปฏิเสธ หรือหมายเหตุเพิ่มเติม..."></textarea>
+    </div>
+
+    <!-- แสดงเฉพาะเมื่อ accepted -->
+    <div id="gcAcceptedFields" style="display:none">
+      <div style="border-top:1.5px solid var(--border);margin:14px 0 14px"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">ขั้นตอนหลัง Global รับเคลม</div>
+
+      <!-- เครื่องเก่า -->
+      <div class="field"><label>📦 เครื่องเก่า (ที่พัง)</label>
+        <div class="select-wrap"><select id="gc_oldmachine">
+          <option value="">— ยังไม่ดำเนินการ —</option>
+          <option value="sent_back">✈️ ส่งคืน Global แล้ว</option>
+          <option value="kept_th">🏠 Global ฝากไว้ที่ Thailand</option>
+        </select></div>
+      </div>
+
+      <!-- เครื่องใหม่ -->
+      <div class="field"><label>🆕 เครื่องใหม่ทดแทน</label>
+        <div class="select-wrap"><select id="gc_newmachine" onchange="onGcNewMachineChange()">
+          <option value="">— ยังไม่ได้รับ —</option>
+          <option value="in_lot">📋 รอรับใน Lot สั่ง</option>
+          <option value="received">✅ ได้รับแล้ว</option>
+        </select></div>
+      </div>
+
+      <div id="gcLotField" style="display:none">
+        <div class="field"><label>หมายเลข Lot / การสั่งซื้อ</label>
+          <input type="text" id="gc_lot" placeholder="เช่น PO-2026-04, Lot #12, April batch..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px" />
+        </div>
+      </div>
+    </div>
+
     <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeModal('editTicketModal')">ยกเลิก</button>
-      <button class="modal-confirm" onclick="saveTicketEdit()">💾 บันทึก</button>
+      <button class="modal-cancel" onclick="closeModal('globalClaimModal')">ยกเลิก</button>
+      <button class="modal-confirm" onclick="saveGlobalClaimStatus()">💾 บันทึก</button>
     </div>
   </div>
 </div>
@@ -356,7 +584,7 @@ tbody tr:hover td { background: #fafaf8; }
   <div class="modal">
     <h3 id="adminActionTitle">🔒 ยืนยันตัวตน</h3>
     <p id="adminActionDesc">กรุณาใส่รหัสผ่าน Admin เพื่อดำเนินการ</p>
-    <input type="password" id="adminActionPw" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')confirmAdminAction()" />
+    <input type="password" id="adminActionPw" placeholder="รหัสยืนยัน" autocomplete="off" onkeydown="if(event.key==='Enter')confirmAdminAction()" />
     <div class="modal-error" id="adminActionErr">รหัสผ่านไม่ถูกต้อง</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('adminActionModal')">ยกเลิก</button>
@@ -383,21 +611,99 @@ tbody tr:hover td { background: #fafaf8; }
 <!-- ── Edit Machine Modal ── -->
 <div class="modal-overlay" id="editMachineModal">
   <div class="modal modal-wide">
-    <h3>🔧 อัปเดตสถานะเครื่อง</h3>
+    <h3 id="emModalTitle">🖥 แก้ไข Asset</h3>
     <div id="emMachineInfo" style="font-size:13px;color:var(--muted);margin-bottom:12px;background:var(--bg);padding:10px 12px;border-radius:8px;"></div>
-    <div class="field"><label>สถานะ <span class="req">*</span></label>
-      <div class="select-wrap"><select id="em_status">
-        <option value="claimed">เคลมแล้ว (รอประเมิน)</option>
-        <option value="pending_repair">รอซ่อม</option>
-        <option value="repaired">ซ่อมเสร็จแล้ว</option>
-        <option value="subscription">เข้า Subscription</option>
+
+    <div class="field"><label>S/N <span class="req">*</span></label>
+      <input type="text" id="em_serial" placeholder="Serial Number" autocapitalize="characters" /></div>
+
+    <div class="field"><label>สินค้า</label>
+      <div class="select-wrap" id="em_product_wrap"></div>
+    </div>
+
+    <!-- Asset Type -->
+    <div class="field"><label>ประเภท Asset <span class="req">*</span></label>
+      <div class="select-wrap"><select id="em_assettype" onchange="onAssetTypeChange()">
+        <option value="store">🏪 Store Asset — ใช้ที่ร้าน</option>
+        <option value="claim_fixed">🔧 Claim &amp; Fixed Asset — เคลมแล้วซ่อมแล้ว</option>
+        <option value="subscription">♻️ Subscription Asset — ปล่อยเช่า</option>
       </select></div>
     </div>
-    <div class="field"><label>S/N ใหม่ (ถ้ามี)</label><input type="text" id="em_newserial" placeholder="S/N เครื่องใหม่ที่เปลี่ยนให้" /></div>
-    <div class="field"><label>หมายเหตุ</label><textarea id="em_notes" placeholder="รายละเอียดเพิ่มเติม..."></textarea></div>
+
+    <!-- แหล่งที่มาเครื่อง (แสดงทุก type) -->
+    <div class="field"><label>แหล่งที่มาเครื่อง</label>
+      <div class="select-wrap"><select id="em_subsource">
+        <option value="new">✨ New Machine — เครื่องใหม่</option>
+        <option value="from_claim">🔧 จาก Claim &amp; Fixed — เคลมแล้วซ่อมแล้ว</option>
+        <option value="other">📦 อื่นๆ</option>
+      </select></div>
+    </div>
+
+    <!-- Subscription sub-type hidden (kept for compatibility) -->
+    <div id="emSubscriptionFields" style="display:none"></div>
+
+    <!-- ข้อมูลประกัน -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>วันเริ่มประกัน</label>
+        <input type="date" id="em_warrantystart" /></div>
+      <div class="field"><label>วันหมดประกัน</label>
+        <input type="date" id="em_warrantyend" /></div>
+    </div>
+
+    <!-- ที่ใช้งาน / ลูกค้า -->
+    <div class="field"><label>ที่ใช้งาน / ลูกค้า</label>
+      <input type="text" id="em_location" placeholder="เช่น ร้านสาขา Siam / ชื่อลูกค้าที่เช่า" /></div>
+
+    <div class="field"><label>หมายเหตุ</label>
+      <textarea id="em_notes" placeholder="รายละเอียดเพิ่มเติม..."></textarea></div>
+
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editMachineModal')">ยกเลิก</button>
       <button class="modal-confirm" onclick="saveMachineEdit()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Machine Modal ── -->
+<div class="modal-overlay" id="addMachineModal">
+  <div class="modal modal-wide">
+    <h3>➕ เพิ่ม Asset ใหม่</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>S/N <span class="req">*</span></label>
+        <input type="text" id="am_serial" placeholder="Serial Number" autocapitalize="characters" /></div>
+      <div class="field"><label>สินค้า</label>
+        <div class="select-wrap" id="am_product_wrap"></div>
+      </div>
+    </div>
+    <div class="field"><label>ประเภท Asset <span class="req">*</span></label>
+      <div class="select-wrap"><select id="am_assettype" onchange="onAddAssetTypeChange()">
+        <option value="store">🏪 Store Asset</option>
+        <option value="claim_fixed">🔧 Claim &amp; Fixed Asset</option>
+        <option value="subscription">♻️ Subscription Asset</option>
+      </select></div>
+    </div>
+    <!-- แหล่งที่มาเครื่อง -->
+    <div class="field"><label>แหล่งที่มาเครื่อง</label>
+      <div class="select-wrap"><select id="am_subsource">
+        <option value="new">✨ New Machine — เครื่องใหม่</option>
+        <option value="from_claim">🔧 จาก Claim &amp; Fixed — เคลมแล้วซ่อมแล้ว</option>
+        <option value="other">📦 อื่นๆ</option>
+      </select></div>
+    </div>
+    <div id="amSubscriptionFields" style="display:none"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>วันเริ่มประกัน</label>
+        <input type="date" id="am_warrantystart" /></div>
+      <div class="field"><label>วันหมดประกัน</label>
+        <input type="date" id="am_warrantyend" /></div>
+    </div>
+    <div class="field"><label>ที่ใช้งาน / ลูกค้า</label>
+      <input type="text" id="am_location" placeholder="เช่น ร้านสาขา Siam" /></div>
+    <div class="field"><label>หมายเหตุ</label>
+      <textarea id="am_notes" placeholder="รายละเอียดเพิ่มเติม..."></textarea></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('addMachineModal')">ยกเลิก</button>
+      <button class="modal-confirm" onclick="saveAddMachine()">➕ เพิ่ม Asset</button>
     </div>
   </div>
 </div>
@@ -521,11 +827,12 @@ tbody tr:hover td { background: #fafaf8; }
       <div class="error-msg" id="e_province">กรุณากรอกจังหวัด</div>
     </div>
     <div class="field">
-      <label>แนบใบเสร็จ/หลักฐานการซื้อ</label>
+      <label>แนบใบเสร็จ/หลักฐานการซื้อ <span class="req">*</span></label>
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('f_receipt').click()">
         <span class="upload-icon">📎</span>
-        <span class="upload-text" id="uploadText">คลิกเพื่อแนบไฟล์รูปภาพ (ไม่บังคับ)</span>
+        <span class="upload-text" id="uploadText">คลิกเพื่อแนบรูปใบเสร็จ (บังคับ)</span>
       </div>
+      <div id="e_receipt" style="display:none;color:var(--red);font-size:12px;margin-top:4px">⚠ กรุณาแนบรูปใบเสร็จ/หลักฐานการซื้อ</div>
       <input type="file" id="f_receipt" class="file-hidden" accept="image/*" onchange="handleFile(this)" />
     </div>
     <div style="display:flex;gap:8px;margin-top:20px">
@@ -734,13 +1041,28 @@ tbody tr:hover td { background: #fafaf8; }
      ADMIN PANEL
 ══════════════════════════════════════════ -->
 <div class="admin-panel" id="adminPanel">
-  <span class="back-link" onclick="closeAdmin()">← กลับหน้าหลัก</span>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <span class="back-link" onclick="closeAdmin()">← กลับหน้าหลัก</span>
+  </div>
+
+  <!-- User Bar -->
+  <div class="user-bar" id="userBar">
+    <div class="user-bar-left">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div>
+        <div class="user-name" id="userBarName">—</div>
+        <span class="user-role-badge" id="userRoleBadge">—</span>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logoutAdmin()">ออกจากระบบ</button>
+  </div>
 
   <!-- Admin Sub-Tabs -->
-  <div class="admin-tabs">
-    <button class="admin-tab-btn active" onclick="switchAdminTab('warranties')">📋 ข้อมูลประกัน</button>
-    <button class="admin-tab-btn" onclick="switchAdminTab('tickets')">🎫 Ticket Support</button>
-    <button class="admin-tab-btn" onclick="switchAdminTab('machines')">🔧 Machine Tracker</button>
+  <div class="admin-tabs" id="adminTabsBar">
+    <button class="admin-tab-btn active" id="tabBtn_warranties" onclick="switchAdminTab('warranties')">📋 ข้อมูลประกัน</button>
+    <button class="admin-tab-btn" id="tabBtn_tickets" onclick="switchAdminTab('tickets')">🎫 Ticket Support</button>
+    <button class="admin-tab-btn" id="tabBtn_machines" onclick="switchAdminTab('machines')">🔧 Machine Tracker</button>
+    <button class="admin-tab-btn" id="tabBtn_activitylog" onclick="switchAdminTab('activitylog')">📜 Activity Log</button>
   </div>
 
   <!-- ── Admin: Warranties ── -->
@@ -762,6 +1084,11 @@ tbody tr:hover td { background: #fafaf8; }
       </div>
     </div>
     <div class="admin-stats" id="warrantyStats"></div>
+    <div class="ticket-filters" id="warrantyFilters" style="margin-bottom:12px">
+      <button class="filter-btn active" onclick="setWarrantyTypeFilter('all',this)">ทั้งหมด</button>
+      <button class="filter-btn" onclick="setWarrantyTypeFilter('normal',this)">📋 ปกติ</button>
+      <button class="filter-btn" onclick="setWarrantyTypeFilter('replacement',this)">🔄 เครื่องทดแทน</button>
+    </div>
     <div class="admin-search-wrap"><input type="text" placeholder="🔍 ค้นหา S/N, ชื่อลูกค้า, สินค้า, อีเมล..." id="warrantySearch" oninput="filterWarranties(this.value)" /></div>
     <div class="table-wrap"><div class="table-scroll">
       <table><thead><tr>
@@ -777,24 +1104,64 @@ tbody tr:hover td { background: #fafaf8; }
     <div class="admin-header">
       <div class="admin-title">🎫 Ticket Support</div>
       <div class="admin-actions">
+        <button class="export-btn" onclick="openTicketAnalysis()" style="background:var(--accent);color:#fff;border-color:var(--accent)">📊 Analysis</button>
         <button class="export-btn" onclick="exportTicketCSV()">⬇ Export CSV</button>
         <button class="export-btn" onclick="loadTickets()">🔄 Refresh</button>
       </div>
     </div>
-    <div class="admin-stats" id="ticketStats"></div>
-    <div class="ticket-filters" id="ticketFilters">
-      <button class="filter-btn active" onclick="filterTickets('all',this)">ทั้งหมด</button>
-      <button class="filter-btn" onclick="filterTickets('warranty',this)">🛡 ในประกัน</button>
-      <button class="filter-btn" onclick="filterTickets('normal',this)">🔧 ซ่อมปกติ</button>
-      <button class="filter-btn" onclick="filterTickets('open',this)">กำลังดำเนินการ</button>
-      <button class="filter-btn" onclick="filterTickets('ปิด Ticket',this)">ปิดแล้ว</button>
+
+    <!-- ── Quick Summary Bar ── -->
+    <div id="ticketSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+
+    <!-- Stats -->
+    <div id="ticketStats" style="display:none"></div>
+
+    <!-- ── Main Type Tabs ── -->
+    <div style="display:flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:12px">
+      <button id="ticketMainTab_warranty" onclick="setTicketMainTab('warranty')"
+        style="flex:1;padding:10px 8px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff">
+        🛡 ในประกัน <span id="ticketMainCount_warranty" style="font-size:11px;opacity:.8"></span>
+      </button>
+      <button id="ticketMainTab_normal" onclick="setTicketMainTab('normal')"
+        style="flex:1;padding:10px 8px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted)">
+        🔧 ซ่อมปกติ <span id="ticketMainCount_normal" style="font-size:11px;opacity:.8"></span>
+      </button>
+      <button id="ticketMainTab_repair" onclick="setTicketMainTab('repair')"
+        style="flex:1;padding:10px 8px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted)">
+        🔄 ซ่อม Claim <span id="ticketMainCount_repair" style="font-size:11px;opacity:.8"></span>
+      </button>
     </div>
+
+    <!-- ── Sub-filters as pills ── -->
+    <div class="ticket-filters" id="ticketFilters" style="margin-bottom:14px">
+      <button id="subFilter_all" class="filter-btn" onclick="filterTickets('all',this)">
+        ทั้งหมด <span id="subCount_all" style="font-size:10px"></span>
+      </button>
+      <button id="subFilter_incoming" class="filter-btn active" onclick="filterTickets('incoming',this)">
+        📬 Incoming <span id="subCount_incoming" style="font-size:10px"></span>
+      </button>
+      <button id="subFilter_ongoing" class="filter-btn" onclick="filterTickets('ongoing',this)">
+        ⚙️ On-going <span id="subCount_ongoing" style="font-size:10px"></span>
+      </button>
+      <button id="subFilter_closed" class="filter-btn" onclick="filterTickets('closed',this)">
+        ✅ Closed <span id="subCount_closed" style="font-size:10px"></span>
+      </button>
+    </div>
+
     <div class="admin-search-wrap"><input type="text" placeholder="🔍 ค้นหา Ticket ID, S/N, ชื่อ..." id="ticketSearch" oninput="filterTicketsByText(this.value)" /></div>
+    <div id="globalExportBar" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="font-size:13px;color:#1e40af;font-weight:600">📋 กำลังดูเคสปิดในประกัน — พร้อมส่ง Global</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="export-btn" onclick="openAddManualCase()" style="background:#fff;color:#15803d;border-color:#86efac">➕ เพิ่มเคสย้อนหลัง</button>
+        <button class="export-btn" onclick="copyGlobalLink()" style="background:#fff;color:#1e40af;border-color:#93c5fd">🔗 Copy Link สำหรับ Global</button>
+        <button class="export-btn" onclick="exportGlobalClaimTickets()" style="background:#1e40af;color:#fff;border-color:#1e40af">📤 Export CSV</button>
+      </div>
+    </div>
     <div class="table-wrap"><div class="table-scroll">
       <table><thead><tr>
-        <th>Ticket ID</th><th>วันที่เปิด</th><th>S/N</th><th>ลูกค้า</th><th>โทร</th><th>ปัญหา</th><th>Log</th><th>VDO</th><th>สถานะ</th><th>มอบหมาย</th><th></th>
+        <th>Ticket ID</th><th>วันที่เปิด</th><th>S/N</th><th>ลูกค้า</th><th>โทร</th><th>ปัญหา</th><th>Log</th><th>VDO</th><th>สถานะ</th><th>มอบหมาย</th><th id="globalClaimTh" style="display:none">Global</th><th></th>
       </tr></thead>
-      <tbody id="ticketTableBody"><tr><td colspan="10"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr></tbody>
+      <tbody id="ticketTableBody"><tr><td colspan="12"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -802,19 +1169,67 @@ tbody tr:hover td { background: #fafaf8; }
   <!-- ── Admin: Machines ── -->
   <div class="admin-section" id="adminMachines">
     <div class="admin-header">
-      <div class="admin-title">🔧 Machine Tracker</div>
+      <div class="admin-title">🖥 Asset Registry</div>
       <div class="admin-actions">
+        <button class="export-btn" onclick="openAddMachineModal()">➕ เพิ่ม Asset</button>
         <button class="export-btn" onclick="exportMachineCSV()">⬇ Export CSV</button>
         <button class="export-btn" onclick="loadMachines()">🔄 Refresh</button>
       </div>
     </div>
-    <div class="admin-stats" id="machineStats"></div>
+
+    <!-- 3 Asset Type Tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="assetTab_all" onclick="setAssetTab('all',this)"
+        style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--accent);background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+        📊 ทั้งหมด<br><span id="assetCount_all" style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;display:block;margin-top:4px">—</span>
+      </button>
+      <button id="assetTab_store" onclick="setAssetTab('store',this)"
+        style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+        🏪 Store Asset<br><span id="assetCount_store" style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;display:block;margin-top:4px">—</span>
+        <span style="font-size:10px;font-weight:400;color:var(--muted)">ใช้ที่ร้าน</span>
+      </button>
+      <button id="assetTab_claim_fixed" onclick="setAssetTab('claim_fixed',this)"
+        style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+        🔧 Claim &amp; Fixed<br><span id="assetCount_claim_fixed" style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;display:block;margin-top:4px">—</span>
+        <span style="font-size:10px;font-weight:400;color:var(--muted)">เคลมแล้วซ่อมแล้ว</span>
+      </button>
+      <button id="assetTab_subscription" onclick="setAssetTab('subscription',this)"
+        style="flex:1;padding:14px 8px;border-radius:14px;border:2px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+        ♻️ Subscription<br><span id="assetCount_subscription" style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;display:block;margin-top:4px">—</span>
+        <span style="font-size:10px;font-weight:400;color:var(--muted)">ปล่อยเช่า</span>
+      </button>
+    </div>
+
+    <div id="subscriptionSubFilter" style="display:none;margin-bottom:12px" class="ticket-filters">
+      <button class="filter-btn active" id="subAsset_all" onclick="setSubscriptionFilter('all',this)">ทั้งหมด</button>
+      <button class="filter-btn" id="subAsset_from_claim" onclick="setSubscriptionFilter('from_claim',this)">🔧 จาก Claim</button>
+      <button class="filter-btn" id="subAsset_new" onclick="setSubscriptionFilter('new',this)">✨ New</button>
+    </div>
+
     <div class="admin-search-wrap"><input type="text" placeholder="🔍 ค้นหา S/N, ชื่อลูกค้า..." id="machineSearch" oninput="filterMachines(this.value)" /></div>
     <div class="table-wrap"><div class="table-scroll">
       <table><thead><tr>
-        <th>#</th><th>S/N เดิม</th><th>S/N ใหม่</th><th>สินค้า</th><th>ลูกค้า</th><th>สถานะ</th><th>หมายเหตุ</th><th>วันที่อัปเดต</th><th></th>
+        <th>#</th><th>S/N</th><th>สินค้า</th><th>ประเภท Asset</th><th>ลูกค้า / ที่ใช้</th><th>ประกัน</th><th>หมายเหตุ</th><th>วันที่อัปเดต</th><th></th>
       </tr></thead>
       <tbody id="machineTableBody"><tr><td colspan="9"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr></tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <!-- ── Admin: Activity Log ── -->
+  <div class="admin-section" id="adminActivitylog">
+    <div class="admin-header">
+      <div class="admin-title">📜 Activity Log</div>
+      <div class="admin-actions">
+        <button class="export-btn" onclick="loadActivityLog()">🔄 Refresh</button>
+      </div>
+    </div>
+    <div class="admin-search-wrap"><input type="text" placeholder="🔍 ค้นหาชื่อ, action, S/N..." id="activitySearch" oninput="filterActivityLog(this.value)" /></div>
+    <div class="table-wrap"><div class="table-scroll">
+      <table><thead><tr>
+        <th>เวลา</th><th>ผู้ใช้</th><th>Role</th><th>Action</th><th>เป้าหมาย</th><th>รายละเอียด</th>
+      </tr></thead>
+      <tbody id="activityTableBody"><tr><td colspan="6"><div class="empty-state">กด Refresh เพื่อโหลดข้อมูล</div></td></tr></tbody>
       </table>
     </div></div>
   </div>
@@ -838,11 +1253,21 @@ const DEFAULT_PRODUCTS = [
 function loadProducts() { try { return JSON.parse(localStorage.getItem(PRODUCTS_KEY)) || DEFAULT_PRODUCTS; } catch(e) { return DEFAULT_PRODUCTS; } }
 function saveProducts(list) { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list)); }
 function renderProductSelect(selectId, selectedVal) {
-  const sel = document.getElementById(selectId);
+  var sel = document.getElementById(selectId);
   if (!sel) return;
-  const products = loadProducts();
+  var products = loadProducts();
   sel.innerHTML = '<option value="">— เลือกรุ่นสินค้า —</option>' +
-    products.map(p => `<option value="${p}"${p===selectedVal?' selected':''}>${p}</option>`).join('');
+    products.map(function(p){ return '<option value="'+p+'"'+(p===selectedVal?' selected':'')+'>'+p+'</option>'; }).join('');
+}
+function renderProductSelectInDiv(divId, selectedVal) {
+  var div = document.getElementById(divId);
+  if(!div) return;
+  var products = loadProducts();
+  var uid = divId + '_sel';
+  div.innerHTML = '<select id="'+uid+'" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;background:var(--input-bg);appearance:none">'
+    + '<option value="">— เลือกรุ่นสินค้า —</option>'
+    + products.map(function(p){ return '<option value="'+p+'"'+(p===selectedVal?' selected':'')+'>'+p+'</option>'; }).join('')
+    + '</select>';
 }
 
 // ══ LOCAL DATA ══
@@ -880,48 +1305,139 @@ function switchTab(tab) {
 }
 
 // ══ ADMIN ══
+let _currentUser = null; // { name, role }
+
+const ROLE_LABEL = { admin:'Admin', staff:'Staff', technician:'Technician' };
+const ROLE_TABS = {
+  admin:      ['warranties','tickets','machines','activitylog'],
+  staff:      ['tickets','machines'],
+  technician: ['tickets'],
+};
+
 function openAdmin() {
-  document.getElementById('pwInput').value='';
+  document.getElementById('loginName').value='';
+  document.getElementById('loginPin').value='';
   document.getElementById('pwErr').style.display='none';
   document.getElementById('pwModal').classList.add('open');
+  setTimeout(()=>document.getElementById('loginName').focus(),100);
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
 function checkPw() {
-  const pw = document.getElementById('pwInput').value;
-  const btn = document.getElementById('pwSubmitBtn');
-  btn.textContent='กำลังตรวจสอบ...'; btn.disabled=true;
+  const name = document.getElementById('loginName').value.trim();
+  const pin  = document.getElementById('loginPin').value.trim();
+  const btn  = document.getElementById('pwSubmitBtn');
+  const errEl= document.getElementById('pwErr');
+  if(!name||!pin){ errEl.textContent='กรุณากรอกชื่อและ PIN'; errEl.style.display='block'; return; }
+  btn.textContent='กำลังตรวจสอบ...'; btn.disabled=true; errEl.style.display='none';
   const cbName='loginCb_'+Date.now(), s=document.createElement('script');
-  const timer=setTimeout(()=>{ delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; }, 10000);
+  const timer=setTimeout(()=>{ delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; errEl.textContent='หมดเวลา กรุณาลองใหม่'; errEl.style.display='block'; }, 12000);
   window[cbName]=function(res){
     clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
     btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
-    if(res&&res.result==='ok'){ closeModal('pwModal'); showAdmin(); }
-    else { document.getElementById('pwErr').textContent='รหัสผ่านไม่ถูกต้อง'; document.getElementById('pwErr').style.display='block'; document.getElementById('pwInput').value=''; document.getElementById('pwInput').focus(); }
+    if(res&&res.result==='ok'){
+      _currentUser = { name: res.name, role: res.role, pin: pin };
+      closeModal('pwModal');
+      showAdmin();
+    } else {
+      errEl.textContent='ชื่อหรือ PIN ไม่ถูกต้อง';
+      errEl.style.display='block';
+      document.getElementById('loginPin').value='';
+      document.getElementById('loginPin').focus();
+    }
   };
-  s.src=SHEETS_URL+'?action=login&password='+encodeURIComponent(pw)+'&callback='+cbName+'&t='+Date.now();
-  s.onerror=function(){ clearTimeout(timer); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; };
+  s.src=SHEETS_URL+'?action=loginUser&name='+encodeURIComponent(name)+'&pin='+encodeURIComponent(pin)+'&callback='+cbName+'&t='+Date.now();
+  s.onerror=function(){ clearTimeout(timer); btn.textContent='เข้าสู่ระบบ'; btn.disabled=false; errEl.textContent='เชื่อมต่อไม่สำเร็จ'; errEl.style.display='block'; };
   document.body.appendChild(s);
 }
+
 function showAdmin() {
+  if(!_currentUser) return;
+  const { name, role } = _currentUser;
+  // Hide main UI
   document.getElementById('tabNav').style.display='none';
   document.getElementById('formCard').style.display='none';
   document.getElementById('checkerCard').style.display='none';
   document.getElementById('supportSection').style.display='none';
   document.getElementById('trackSection').style.display='none';
   document.getElementById('adminPanel').classList.add('open');
-  loadWarranties();
+
+  // Update user bar
+  document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+  document.getElementById('userBarName').textContent = name;
+  const badge = document.getElementById('userRoleBadge');
+  badge.textContent = ROLE_LABEL[role]||role;
+  badge.className = 'user-role-badge role-'+role;
+
+  // Show/hide tabs based on role
+  const allowedTabs = ROLE_TABS[role] || ['tickets'];
+  ['warranties','tickets','machines','activitylog'].forEach(tab => {
+    const btn = document.getElementById('tabBtn_'+tab);
+    if(btn) btn.style.display = allowedTabs.includes(tab) ? '' : 'none';
+  });
+
+  // Hide delete/destructive buttons for non-admin
+  document.querySelectorAll('.export-btn.danger').forEach(b => {
+    b.style.display = role==='admin' ? '' : 'none';
+  });
+
+  // Load first allowed tab
+  const firstTab = allowedTabs[0];
+  switchAdminTab(firstTab);
+  // Reset tab active state
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('tabBtn_'+firstTab);
+  if(activeBtn) activeBtn.classList.add('active');
+
+  // โหลดรายชื่อคนสำหรับ dropdown มอบหมาย
+  loadAssignableUsers();
 }
+
+function logoutAdmin() {
+  _currentUser = null;
+  document.getElementById('adminPanel').classList.remove('open');
+  document.getElementById('tabNav').style.display='';
+  switchTab(currentTab);
+}
+
 function closeAdmin() {
   document.getElementById('adminPanel').classList.remove('open');
   document.getElementById('tabNav').style.display='';
   switchTab(currentTab);
 }
+
+function loadAssignableUsers() {
+  const cbName='usersCb_'+Date.now(), s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.result==='success'&&Array.isArray(res.data)){
+      const sel=document.getElementById('et_assigned');
+      const current=sel.value;
+      sel.innerHTML='<option value="">— ยังไม่มอบหมาย —</option>';
+      res.data.forEach(u=>{
+        const opt=document.createElement('option');
+        opt.value=u.name; opt.textContent=u.name+(u.role==='technician'?' 🔧':'');
+        sel.appendChild(opt);
+      });
+      if(current) sel.value=current; // restore selection ถ้ามี
+    }
+  };
+  s.onerror=function(){delete window[cbName];};
+  s.src=SHEETS_URL+'?action=getUsers&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
 function switchAdminTab(tab) {
-  document.querySelectorAll('.admin-tab-btn').forEach((b,i)=>{ b.classList.toggle('active',['warranties','tickets','machines'][i]===tab); });
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('tabBtn_'+tab);
+  if(activeBtn) activeBtn.classList.add('active');
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
-  document.getElementById('admin'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
-  if(tab==='tickets') loadTickets();
-  if(tab==='machines') loadMachines();
+  const section = document.getElementById('admin'+tab.charAt(0).toUpperCase()+tab.slice(1));
+  if(section) section.classList.add('active');
+  if(tab==='warranties')  loadWarranties();
+  if(tab==='tickets')     loadTickets();
+  if(tab==='machines')    loadMachines();
+  if(tab==='activitylog') loadActivityLog();
 }
 
 // ══ WARRANTY REGISTRATION ══
@@ -947,7 +1463,18 @@ function validateStep2(){
 }
 function validateStep3(){
   const ok=[[('f_postal'),('e_postal'),!v('f_postal')],[('f_houseno'),('e_houseno'),!v('f_houseno')],[('f_subdistrict'),('e_subdistrict'),!v('f_subdistrict')],[('f_district'),('e_district'),!v('f_district')],[('f_province'),('e_province'),!v('f_province')]];
-  let pass=true; ok.forEach(([f,e,b])=>{setErr(f,e,b);if(b)pass=false;}); if(pass)submitForm();
+  let pass=true; ok.forEach(([f,e,b])=>{setErr(f,e,b);if(b)pass=false;});
+  // บังคับแนบรูปใบเสร็จ
+  var receiptErr = document.getElementById('e_receipt');
+  if(!uploadedFile){
+    if(receiptErr) receiptErr.style.display='block';
+    document.getElementById('uploadArea').style.borderColor='var(--red)';
+    pass=false;
+  } else {
+    if(receiptErr) receiptErr.style.display='none';
+    document.getElementById('uploadArea').style.borderColor='';
+  }
+  if(pass) submitForm();
 }
 function submitForm(){
   const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
@@ -973,7 +1500,21 @@ function uploadReceiptToDrive(entry,file){
   const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
   const filename='SN_'+entry.serial+'.'+ext;
   fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'uploadReceipt',filename,mimetype,data:file.dataUrl})})
-    .finally(()=>{ entry.receiptName=filename; sendToSheets(entry,document.getElementById('submitBtn')); });
+    .finally(()=>{
+      entry.receiptName=filename;
+      // ดึง URL ของไฟล์ที่เพิ่งอัปโหลดผ่าน JSONP
+      var cbName='receiptUrlCb_'+Date.now(), s=document.createElement('script');
+      window[cbName]=function(res){
+        delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+        if(res&&res.result==='found'&&res.directUrl){
+          entry.receiptDriveUrl=res.directUrl;
+        }
+        sendToSheets(entry,document.getElementById('submitBtn'));
+      };
+      s.onerror=function(){delete window[cbName]; sendToSheets(entry,document.getElementById('submitBtn'));};
+      s.src=SHEETS_URL+'?action=getFileUrl&filename='+encodeURIComponent(filename)+'&callback='+cbName+'&t='+Date.now();
+      document.body.appendChild(s);
+    });
 }
 function sendToSheets(entry,btn){
   const params=new URLSearchParams({
@@ -1110,6 +1651,7 @@ function autoCheckWarrantyForTicket() {
         document.getElementById('t_lineid').placeholder = 'เช่น ' + res.data.phone;
       }
       if (res.data.email) document.getElementById('t_email').value = res.data.email;
+      if (res.data.province) document.getElementById('t_province').value = res.data.province;
 
       if (expiryDt && today <= expiryDt) {
         const remain = Math.round((expiryDt - today) / 864e5);
@@ -1242,23 +1784,26 @@ function uploadVideoToDrive(ticketId, file, callback) {
   const btn = document.getElementById('submitTicketBtn');
   btn.textContent = '⏳ กำลังอัปโหลดวิดีโอ...';
   const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-  const filename = 'VDO_' + ticketId + '.' + ext;
+  const serial = (document.getElementById('t_serial')||{value:''}).value.trim().toUpperCase();
+  const fileBase = serial ? 'VDO_SN_'+serial : 'VDO_'+ticketId;
+  const filename = fileBase + '.' + ext;
   const mimetype = file.dataUrl.split(';')[0].split(':')[1] || 'video/mp4';
 
-  // For large files, use chunked-like approach via POST
   fetch(SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
+    method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({
-      action: 'uploadVideo',
-      filename: filename,
-      mimetype: mimetype,
-      data: file.dataUrl
-    })
+    body: JSON.stringify({ action: 'uploadVideo', filename, mimetype, data: file.dataUrl })
   }).finally(() => {
-    // no-cors can't read response, use Drive folder link
-    callback(DRIVE_VIDEO_URL, filename);
+    // ดึง direct URL ผ่าน JSONP
+    var cbName='vdoUrlCb_'+Date.now(), s=document.createElement('script');
+    window[cbName]=function(res){
+      delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+      var url=(res&&res.directUrl)?res.directUrl:DRIVE_VIDEO_URL;
+      callback(url, filename);
+    };
+    s.onerror=function(){delete window[cbName]; callback(DRIVE_VIDEO_URL, filename);};
+    s.src=SHEETS_URL+'?action=getFileUrl&filename='+encodeURIComponent(filename)+'&folder=video&callback='+cbName+'&t='+Date.now();
+    document.body.appendChild(s);
   });
 }
 function copyTicketId(){ const id=document.getElementById('newTicketId').textContent; navigator.clipboard.writeText(id).catch(()=>{}); }
@@ -1283,14 +1828,23 @@ function trackTicket(){
   s.onerror=function(){clearTimeout(timer);delete window[cbName];notFoundEl.classList.remove('show');notFoundEl.innerHTML='<div class="not-found-icon">🔍</div><p>เชื่อมต่อไม่ได้ กรุณาลองใหม่</p>';notFoundEl.classList.add('show');};
   document.body.appendChild(s);
 }
-const WARRANTY_STATUSES = [
-  {icon:'📥',label:'ตรวจสอบสิทธิ์ประกัน'},
-  {icon:'✅',label:'อนุมัติการเคลม'},
-  {icon:'📦',label:'จัดส่งเครื่องใหม่ให้ลูกค้า'},
-  {icon:'🔄',label:'รับเครื่องเก่าคืน'},
-  {icon:'🔧',label:'ซ่อมเครื่องเก่า (Subscription)'},
+// Customer-facing steps (ลูกค้าเห็น) — แยกตาม case
+const WARRANTY_STATUSES_CASE1 = [
+  {icon:'📋',label:'ตรวจสอบสิทธิ์ประกัน'},
+  {icon:'💬',label:'แจ้งวิธีแก้ไข'},
+  {icon:'✅',label:'แก้ไขสำเร็จ'},
   {icon:'🏁',label:'ปิด Ticket'},
 ];
+const WARRANTY_STATUSES_CASE2 = [
+  {icon:'📋',label:'ตรวจสอบสิทธิ์ประกัน'},
+  {icon:'💬',label:'แจ้งวิธีแก้ไข'},
+  {icon:'📦',label:'ส่งเครื่องใหม่ให้ลูกค้า'},
+  {icon:'🏁',label:'ปิด Ticket'},
+];
+// fallback
+const WARRANTY_STATUSES = WARRANTY_STATUSES_CASE1;
+// Internal statuses ที่ไม่แสดงใน customer timeline
+const WARRANTY_INTERNAL_STATUSES = ['แก้ไขไม่สำเร็จ','รับเครื่องมาวิเคราะห์','อนุมัติการเคลมเครื่องใหม่','รับเครื่องเก่าคืน','ซ่อมเครื่องเก่า (Subscription)'];
 const NORMAL_STATUSES = [
   {icon:'📥',label:'รับเรื่องแล้ว'},
   {icon:'🔍',label:'ตรวจสอบอาการ'},
@@ -1305,16 +1859,31 @@ const TICKET_STATUSES = [...new Set([...WARRANTY_STATUSES.map(s=>s.label), ...NO
 
 function showTicketResult(ticket){
   const repairTypeWarranty = ticket.repairType === 'warranty';
-  const steps = repairTypeWarranty ? WARRANTY_STATUSES : NORMAL_STATUSES;
+  // เลือก customer-facing steps ตาม case
+  let steps;
+  if(repairTypeWarranty){
+    const wCase = ticket.warrantyCase;
+    steps = (wCase==='2'||wCase===2) ? WARRANTY_STATUSES_CASE2 : WARRANTY_STATUSES_CASE1;
+  } else {
+    steps = NORMAL_STATUSES;
+  }
 
-  // ── fallback: ถ้า status ไม่ตรงกับ step ใดเลย ให้ default เป็น step แรก (รับเรื่องแล้ว)
-  let currentIdx = steps.findIndex(s => s.label === ticket.status);
+  // Map internal status → customer-visible step
+  let displayStatus = ticket.status;
+  if(repairTypeWarranty && WARRANTY_INTERNAL_STATUSES.includes(ticket.status)){
+    displayStatus = 'แจ้งวิธีแก้ไข'; // ลูกค้าเห็นแค่ว่า "กำลังดำเนินการ"
+  }
+
+  let currentIdx = steps.findIndex(s => s.label === displayStatus);
   if (currentIdx === -1) currentIdx = 0;
 
   const isClosed = ticket.status === 'ปิด Ticket';
   const repairLabel = repairTypeWarranty
     ? '<span style="color:var(--green);font-size:12px;font-weight:500">🛡 ในประกัน</span>'
     : '<span style="color:var(--orange);font-size:12px;font-weight:500">🔧 ซ่อมปกติ</span>';
+
+  const displayStatusLabel = WARRANTY_INTERNAL_STATUSES.includes(ticket.status)
+    ? 'กำลังดำเนินการ' : (ticket.status||'รับเรื่องแล้ว');
 
   let html=`
   <div style="background:var(--bg);border-radius:14px;padding:16px;margin-bottom:16px">
@@ -1328,52 +1897,40 @@ function showTicketResult(ticket){
     <span style="font-size:20px">${isClosed?'✅':'⏳'}</span>
     <div>
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">สถานะปัจจุบัน</div>
-      <div style="font-size:15px;font-weight:600;color:${isClosed?'#15803d':'#92400e'}">${ticket.status||'รับเรื่องแล้ว'}</div>
+      <div style="font-size:15px;font-weight:600;color:${isClosed?'#15803d':'#92400e'}">${displayStatusLabel}</div>
     </div>
   </div>
 
   <div class="timeline">`;
 
   steps.forEach((step,i)=>{
-    const done   = i < currentIdx;
-    const active = i === currentIdx;
-    const pending= !done && !active;
-    const isLast = i === steps.length - 1;
-
-    const dotClass  = done ? 'done' : active ? 'active' : '';
-    const lineClass = done ? 'done' : '';
-    const titleClass= pending ? 'muted' : '';
-
-    // active step: เพิ่ม pulse ring + badge "กำลังดำเนินการ"
-    const activeBadge = active && !isClosed
-      ? `<span style="display:inline-block;margin-left:8px;padding:2px 8px;background:#fef9c3;color:#a16207;border-radius:20px;font-size:10px;font-weight:600;vertical-align:middle">กำลังดำเนินการ</span>`
-      : '';
-    const activeRing = active && !isClosed
-      ? `style="box-shadow:0 0 0 4px rgba(0,0,0,0.08),0 0 0 7px rgba(0,0,0,0.04)"`
-      : '';
-
+    const done=i<currentIdx, active=i===currentIdx, isLast=i===steps.length-1;
+    const dotClass=done?'done':active?'active':'';
+    const activeBadge=active&&!isClosed?`<span style="display:inline-block;margin-left:8px;padding:2px 8px;background:#fef9c3;color:#a16207;border-radius:20px;font-size:10px;font-weight:600">กำลังดำเนินการ</span>`:'';
+    const activeRing=active&&!isClosed?`style="box-shadow:0 0 0 4px rgba(0,0,0,0.08),0 0 0 7px rgba(0,0,0,0.04)"`:'';
+    let stepExtra='';
+    if(step.label==='ส่งเครื่องใหม่ให้ลูกค้า'&&(done||active)&&ticket.trackingLink)
+      stepExtra=`<div class="tl-note">📦 Tracking: <a href="${ticket.trackingLink.startsWith('http')?ticket.trackingLink:'https://'+ticket.trackingLink}" target="_blank" style="color:var(--blue);font-weight:600">${ticket.trackingLink}</a></div>`;
+    if(active&&ticket.staffNote&&!stepExtra&&!WARRANTY_INTERNAL_STATUSES.includes(ticket.status))
+      stepExtra=`<div class="tl-note">💬 ${ticket.staffNote}</div>`;
     html+=`<div class="timeline-step">
       <div class="tl-left">
         <div class="tl-dot ${dotClass}" ${activeRing}>${done?'✓':step.icon}</div>
-        ${!isLast?`<div class="tl-line ${lineClass}"></div>`:''}
+        ${!isLast?`<div class="tl-line ${done?'done':''}"></div>`:''}
       </div>
       <div class="tl-content">
-        <div class="tl-title ${titleClass}" style="${active?'font-weight:700':''}">
-          ${step.label}${activeBadge}
-        </div>
-        ${active&&ticket.staffNote?`<div class="tl-note">💬 ${ticket.staffNote}</div>`:''}
-        ${active&&ticket.techNote?`<div class="tl-note">🔧 ${ticket.techNote}</div>`:''}
+        <div class="tl-title ${(!done&&!active)?'muted':''}" style="${active?'font-weight:700':''}">${step.label}${activeBadge}</div>
+        ${stepExtra}
       </div>
     </div>`;
   });
 
   html+=`</div>`;
-  if(ticket.assignedTo && ticket.assignedTo !== '—')
+  if(ticket.assignedTo&&ticket.assignedTo!=='—')
     html+=`<div style="font-size:13px;color:var(--muted);padding:12px 0 4px">👤 ผู้รับผิดชอบ: <strong style="color:var(--text)">${ticket.assignedTo}</strong></div>`;
 
   document.getElementById('trackResult').innerHTML=html;
 }
-
 // ══ ADMIN: WARRANTIES ══
 let _warrantyData=[], _warrantyFilter='';
 function loadWarranties(){
@@ -1402,37 +1959,106 @@ function normalizeDataDates(data){
   });
 }
 function filterWarranties(q){_warrantyFilter=q.toLowerCase();renderWarranties();}
+let _warrantyTypeFilter = 'all';
+function setWarrantyTypeFilter(type, btn) {
+  _warrantyTypeFilter = type;
+  document.querySelectorAll('#warrantyFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWarranties();
+}
+
+function openVideoFile(filename){
+  if(!filename)return;
+  var cbName='vfCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.directUrl){ window.open(res.directUrl,'_blank'); }
+    else { window.open(DRIVE_VIDEO_URL,'_blank'); }
+  };
+  s.onerror=function(){delete window[cbName]; window.open(DRIVE_VIDEO_URL,'_blank');};
+  s.src=SHEETS_URL+'?action=getFileUrl&filename='+encodeURIComponent(filename)+'&folder=video&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function openReceiptFile(filename){
+  if(!filename)return;
+  var cbName='rfCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.directUrl){ window.open(res.directUrl,'_blank'); }
+    else { window.open(DRIVE_FOLDER_URL,'_blank'); }
+  };
+  s.onerror=function(){delete window[cbName]; window.open(DRIVE_FOLDER_URL,'_blank');};
+  s.src=SHEETS_URL+'?action=getFileUrl&filename='+encodeURIComponent(filename)+'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
 function renderWarranties(){
-  const data=_warrantyFilter?_warrantyData.filter(d=>(d.serial||'').toLowerCase().includes(_warrantyFilter)||(d.name||'').toLowerCase().includes(_warrantyFilter)||(d.email||'').toLowerCase().includes(_warrantyFilter)||(d.product||'').toLowerCase().includes(_warrantyFilter)):_warrantyData;
+  function isReplacement(d){
+    return Object.values(d).some(function(v){
+      return typeof v === 'string' && (v.indexOf('เครื่องทดแทน')===0 || v.indexOf('เคลมจาก')>=0 || v === 'replacement');
+    });
+  }
+  function getFromSN(d){
+    var vals=Object.values(d);
+    for(var vi=0;vi<vals.length;vi++){
+      var v=vals[vi];
+      if(typeof v==='string'){var m=v.match(/เคลมจาก (.+)\)/);if(m)return m[1];}
+    }
+    return '';
+  }
+
+  let data = _warrantyData;
+  // กรอง type
+  if(_warrantyTypeFilter==='replacement') data=data.filter(isReplacement);
+  else if(_warrantyTypeFilter==='normal') data=data.filter(d=>!isReplacement(d));
+  // กรอง text search
+  if(_warrantyFilter) data=data.filter(d=>(d.serial||'').toLowerCase().includes(_warrantyFilter)||(d.name||'').toLowerCase().includes(_warrantyFilter)||(d.email||'').toLowerCase().includes(_warrantyFilter)||(d.product||'').toLowerCase().includes(_warrantyFilter));
+
   const today=new Date().toDateString();
   const todayCount=_warrantyData.filter(d=>new Date(d.registeredAt).toDateString()===today).length;
+  const replacementCount=_warrantyData.filter(isReplacement).length;
   const companies=[...new Set(_warrantyData.map(d=>d.company))].length;
-  const products=[...new Set(_warrantyData.map(d=>d.product))].length;
-  document.getElementById('warrantyStats').innerHTML=`<div class="stat-card"><div class="stat-num">${_warrantyData.length}</div><div class="stat-label">ทั้งหมด</div></div><div class="stat-card"><div class="stat-num">${todayCount}</div><div class="stat-label">วันนี้</div></div><div class="stat-card"><div class="stat-num">${companies}</div><div class="stat-label">บริษัท</div></div><div class="stat-card"><div class="stat-num">${products}</div><div class="stat-label">รุ่นสินค้า</div></div>`;
-  if(!data.length){document.getElementById('warrantyTableBody').innerHTML=`<tr><td colspan="12"><div class="empty-state">${_warrantyFilter?'🔍 ไม่พบผลลัพธ์':'⚠ ยังไม่มีข้อมูล'}</div></td></tr>`;return;}
+  document.getElementById('warrantyStats').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${_warrantyData.length}</div><div class="stat-label">ทั้งหมด</div></div>
+    <div class="stat-card"><div class="stat-num">${_warrantyData.length-replacementCount}</div><div class="stat-label">ลงทะเบียนปกติ</div></div>
+    <div class="stat-card" style="border:1.5px solid #e9d5ff"><div class="stat-num" style="color:#7c3aed">${replacementCount}</div><div class="stat-label">เครื่องทดแทน</div></div>
+    <div class="stat-card"><div class="stat-num">${todayCount}</div><div class="stat-label">วันนี้</div></div>
+    <div class="stat-card"><div class="stat-num">${companies}</div><div class="stat-label">บริษัท</div></div>`;
+
+  if(!data.length){document.getElementById('warrantyTableBody').innerHTML=`<tr><td colspan="12"><div class="empty-state">${(_warrantyFilter||_warrantyTypeFilter!=='all')?'🔍 ไม่พบผลลัพธ์':'⚠ ยังไม่มีข้อมูล'}</div></td></tr>`;return;}
   try{
     document.getElementById('warrantyTableBody').innerHTML=[...data].reverse().map((d,i)=>{
-      const receiptCell=(d.receiptName&&d.receiptName.trim())?`<a href="${DRIVE_FOLDER_URL}" target="_blank" class="view-receipt-btn" title="${d.receiptName}">🖼 ดูรูป</a>`:'<span style="color:var(--muted)">—</span>';
+      const isRepl = isReplacement(d);
+      const fromSN = isRepl ? getFromSN(d) : '';
+      const receiptUrl = (d.receiptDriveUrl&&d.receiptDriveUrl.trim()&&!d.receiptDriveUrl.includes('/folders/')) ? d.receiptDriveUrl : null;
+      const receiptCell=(d.receiptName&&d.receiptName.trim())
+        ?(receiptUrl
+          ?`<a href="${receiptUrl}" target="_blank" class="view-receipt-btn">🖼 ดูรูป</a>`
+          :`<button class="view-receipt-btn" onclick="openReceiptFile('${d.receiptName.replace(/'/g,"\\'")}')">🖼 ดูรูป</button>`)
+        :'<span style="color:var(--muted)">—</span>';
       const dateStr=d.registeredAt?new Date(d.registeredAt).toLocaleDateString('th-TH'):'—';
       const timeStr=d.registeredAt?new Date(d.registeredAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):'';
-      // คำนวณสถานะประกัน
+
+      // badge สถานะประกัน
       let warrantyBadge='<span class="badge badge-gray" style="font-family:\'DM Sans\',sans-serif;margin-top:3px;display:inline-block">—</span>';
-      if(d.expiryDate){
+      if(isRepl){
+        // เครื่องทดแทน — แสดง badge สีม่วงพร้อมบอก S/N ต้นทาง
+        warrantyBadge=`<span class="badge" style="background:#f3e8ff;color:#7c3aed;font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">🔄 เครื่องทดแทน</span>`
+          +(fromSN?`<br><span style="font-size:10px;color:#9333ea;font-family:'DM Sans',sans-serif">จาก S/N: ${fromSN}</span>`:'');
+      } else if(d.expiryDate){
         const parts=d.expiryDate.split('/');
         if(parts.length===3){
           const expDt=new Date(parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0')+'T23:59:59');
-          const today=new Date();
-          const daysLeft=Math.round((expDt-today)/864e5);
-          if(daysLeft>30){
-            warrantyBadge=`<span class="badge badge-green" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">✅ อยู่ในประกัน</span>`;
-          } else if(daysLeft>=0){
-            warrantyBadge=`<span class="badge badge-orange" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">⚠ ใกล้หมด ${daysLeft} วัน</span>`;
-          } else {
-            warrantyBadge=`<span class="badge badge-red" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">❌ หมดประกัน</span>`;
-          }
+          const daysLeft=Math.round((expDt-new Date())/864e5);
+          if(daysLeft>30) warrantyBadge=`<span class="badge badge-green" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">✅ อยู่ในประกัน</span>`;
+          else if(daysLeft>=0) warrantyBadge=`<span class="badge badge-orange" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">⚠ ใกล้หมด ${daysLeft} วัน</span>`;
+          else warrantyBadge=`<span class="badge badge-red" style="font-family:'DM Sans',sans-serif;margin-top:3px;display:inline-block">❌ หมดประกัน</span>`;
         }
       }
-      return '<tr id="wrow_'+d.id+'">'
+
+      const rowStyle = isRepl ? 'style="background:#faf5ff"' : '';
+      return '<tr id="wrow_'+d.id+'" '+rowStyle+'>'
         +'<td>'+(data.length-i)+'</td>'
         +'<td style="white-space:nowrap;font-size:12px">'+dateStr+'<br><span style="color:var(--muted)">'+timeStr+'</span></td>'
         +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.serial||'—')+'<br>'+warrantyBadge+'</td>'
@@ -1492,11 +2118,12 @@ function saveWarrantyEdit(){
 }
 function deleteWarranty(id){
   const pw=prompt('กรุณาพิมพ์รหัสยืนยันเพื่อลบ:'); if(!pw||pw.trim()!=='adminaccessonly'){if(pw!==null)alert('รหัสไม่ถูกต้อง');return;}
+  const changedBy=_currentUser?_currentUser.name:'unknown';
   const row=document.getElementById('wrow_'+id); if(row){row.style.opacity='0';row.style.transition='opacity .25s';}
   const cbName='wdCb_'+Date.now(),s=document.createElement('script');
   window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);const idx=_warrantyData.findIndex(d=>String(d.id)===String(id));if(idx>=0)_warrantyData.splice(idx,1);renderWarranties();};
   s.onerror=function(){delete window[cbName];renderWarranties();};
-  s.src=SHEETS_URL+'?action=delete&id='+encodeURIComponent(id)+'&delpw=adminaccessonly&callback='+cbName+'&t='+Date.now();
+  s.src=SHEETS_URL+'?action=delete&id='+encodeURIComponent(id)+'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
 function clearAllWarranties(){
@@ -1509,6 +2136,7 @@ function clearAllWarranties(){
   });
 }
 // ── Shared Admin Action Password Gate ──
+// ใช้ PIN ของ user ที่ login อยู่แทนการ hardcode password ใน source
 let _adminActionCallback = null;
 function requireAdminPw(title, desc, callback) {
   _adminActionCallback = callback;
@@ -1522,17 +2150,38 @@ function requireAdminPw(title, desc, callback) {
   setTimeout(() => document.getElementById('adminActionPw').focus(), 100);
 }
 function confirmAdminAction() {
-  const pw = document.getElementById('adminActionPw').value;
+  const pin = document.getElementById('adminActionPw').value.trim();
   const errEl = document.getElementById('adminActionErr');
-  if (pw !== 'adminaccessonly') {
-    errEl.textContent = 'รหัสผ่านไม่ถูกต้อง';
-    errEl.classList.add('show');
-    document.getElementById('adminActionPw').value = '';
-    document.getElementById('adminActionPw').focus();
+  if (!pin) { errEl.textContent='กรุณาใส่ PIN'; errEl.classList.add('show'); return; }
+
+  // ถ้า currentUser มี PIN cache อยู่แล้ว ให้ตรวจ locally ก่อน
+  if (_currentUser && _currentUser.pin && pin === String(_currentUser.pin)) {
+    closeModal('adminActionModal');
+    if(_adminActionCallback){ _adminActionCallback(); _adminActionCallback=null; }
     return;
   }
-  closeModal('adminActionModal');
-  if (_adminActionCallback) { _adminActionCallback(); _adminActionCallback = null; }
+
+  const btn = document.getElementById('adminActionConfirmBtn');
+  btn.textContent = 'กำลังตรวจสอบ...'; btn.disabled = true;
+  const cbName = 'verCb_'+Date.now(), s = document.createElement('script');
+  const timer = setTimeout(()=>{ delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s); btn.textContent='✓ ยืนยัน'; btn.disabled=false; errEl.textContent='หมดเวลา'; errEl.classList.add('show'); }, 8000);
+  window[cbName] = function(res) {
+    clearTimeout(timer); delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+    btn.textContent='✓ ยืนยัน'; btn.disabled=false;
+    if(res && res.result==='ok') {
+      closeModal('adminActionModal');
+      if(_adminActionCallback){ _adminActionCallback(); _adminActionCallback=null; }
+    } else {
+      errEl.textContent='PIN ไม่ถูกต้อง';
+      errEl.classList.add('show');
+      document.getElementById('adminActionPw').value='';
+      document.getElementById('adminActionPw').focus();
+    }
+  };
+  const name = _currentUser ? _currentUser.name : '';
+  s.src = SHEETS_URL+'?action=loginUser&name='+encodeURIComponent(name)+'&pin='+encodeURIComponent(pin)+'&callback='+cbName+'&t='+Date.now();
+  s.onerror = function(){ clearTimeout(timer); btn.textContent='✓ ยืนยัน'; btn.disabled=false; errEl.textContent='เชื่อมต่อไม่สำเร็จ'; errEl.classList.add('show'); };
+  document.body.appendChild(s);
 }
 
 function exportWarrantyCSV(){
@@ -1558,7 +2207,8 @@ function addProduct(){const inp=document.getElementById('newProductInput');const
 function removeProduct(i){const products=loadProducts();products.splice(i,1);saveProducts(products);renderProductManager();}
 
 // ══ ADMIN: TICKETS ══
-let _ticketData=[], _ticketFilter='all', _ticketTextFilter='';
+let _ticketData=[], _ticketFilter='all', _ticketTextFilter='', _ticketMainTab='warranty';
+
 function loadTickets(){
   document.getElementById('ticketTableBody').innerHTML='<tr><td colspan="11"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
   const cbName='tkAdminCb_'+Date.now(),s=document.createElement('script'),done={v:false};
@@ -1571,64 +2221,1507 @@ function loadTickets(){
   s.src=SHEETS_URL+'?action=getAllTickets&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
+
+function setTicketMainTab(tab){
+  _ticketMainTab=tab; _ticketFilter='incoming';
+  ['warranty','normal','repair'].forEach(function(t){
+    var btn=document.getElementById('ticketMainTab_'+t);
+    if(!btn)return;
+    var on=t===tab;
+    btn.style.background=on?'var(--accent)':'transparent';
+    btn.style.color=on?'#fff':'var(--muted)';
+    btn.style.fontWeight=on?'700':'500';
+  });
+  // reset sub-filter pills
+  ['all','incoming','ongoing','closed'].forEach(function(k){
+    var b=document.getElementById('subFilter_'+k);
+    if(b){ b.classList.remove('active'); }
+  });
+  var first=document.getElementById('subFilter_all');
+  if(first){ first.classList.add('active'); }
+  _ticketFilter='all';
+  renderTickets();
+}
 function filterTickets(status,btn){
   _ticketFilter=status;
-  document.querySelectorAll('#ticketFilters .filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  ['all','incoming','ongoing','closed'].forEach(function(k){
+    var b=document.getElementById('subFilter_'+k);
+    if(b)b.classList.remove('active');
+  });
+  if(btn)btn.classList.add('active');
   renderTickets();
 }
 function filterTicketsByText(q){_ticketTextFilter=q.toLowerCase();renderTickets();}
+
 const TICKET_STATUS_BADGE={'รับเรื่องแล้ว':'badge-blue','กำลังตรวจสอบ':'badge-orange','รอชิ้นส่วน':'badge-orange','ส่งซ่อมแล้ว':'badge-orange','กำลังซ่อม':'badge-orange','ซ่อมเสร็จแล้ว':'badge-green','ส่งคืนลูกค้าแล้ว':'badge-green','ปิด Ticket':'badge-gray'};
+
 function renderTickets(){
-  let data=_ticketData;
-  if(_ticketFilter==='warranty')data=data.filter(d=>d.repairType==='warranty');
-  else if(_ticketFilter==='normal')data=data.filter(d=>d.repairType==='normal'||!d.repairType);
-  else if(_ticketFilter==='open')data=data.filter(d=>d.status!=='ปิด Ticket');
-  else if(_ticketFilter!=='all')data=data.filter(d=>d.status===_ticketFilter);
+  const role=_currentUser?_currentUser.role:'staff';
+  const isTech=role==='technician';
+  let base=_ticketData;
+  if(isTech&&_currentUser)base=base.filter(d=>(d.assignedTo||'').toLowerCase()===_currentUser.name.toLowerCase());
+
+  // ── Quick Summary Bar ──
+  var now=new Date(); var todayStr=now.toDateString();
+  var newToday=base.filter(function(d){ return d.createdAt&&new Date(d.createdAt).toDateString()===todayStr&&d.status!=='ปิด Ticket'; }).length;
+  var incomingStatAll=['ตรวจสอบสิทธิ์ประกัน','รับเรื่องแล้ว'];
+  var untouched=base.filter(function(d){
+    if(incomingStatAll.indexOf(d.status)<0) return false;
+    if(d.status==='ปิด Ticket') return false;
+    var dt=new Date(d.createdAt||0); return (now-dt)>2*864e5;
+  }).length;
+  var ongoing=base.filter(function(d){ return incomingStatAll.indexOf(d.status)<0&&d.status!=='ปิด Ticket'; }).length;
+  var closed=base.filter(function(d){ return d.status==='ปิด Ticket'; }).length;
+  var sb=document.getElementById('ticketSummaryBar');
+  if(sb){
+    var items=[
+      {label:'🆕 ใหม่วันนี้',val:newToday,bg:'#eff6ff',color:'#1e40af',warn:false},
+      {label:'⏰ ค้าง 2+ วัน',val:untouched,bg:untouched>0?'#fef2f2':'#f0fdf4',color:untouched>0?'#dc2626':'#15803d',warn:untouched>0},
+      {label:'⚙️ กำลังดำเนินการ',val:ongoing,bg:'#fffbeb',color:'#92400e',warn:false},
+      {label:'✅ ปิดแล้วทั้งหมด',val:closed,bg:'#f0fdf4',color:'#15803d',warn:false}
+    ];
+    sb.innerHTML=items.map(function(it){
+      return '<div style="flex:1;min-width:120px;background:'+it.bg+';border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">'
+        +'<span style="font-size:12px;color:'+it.color+';font-weight:500">'+it.label+'</span>'
+        +'<span style="font-family:\'Playfair Display\',serif;font-size:24px;font-weight:700;color:'+it.color+'">'+it.val+'</span>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── Count ทั้งสาม tab สำหรับ badge ──
+  const warrantyData = base.filter(d=>d.repairType==='warranty');
+  const normalData   = base.filter(d=>d.repairType==='normal'||!d.repairType);
+  const repairData   = base.filter(d=>d.repairType==='repair_claim');
+  ['warranty','normal','repair'].forEach(t=>{
+    const el=document.getElementById('ticketMainCount_'+t);
+    if(el) el.textContent={warranty:warrantyData.length,normal:normalData.length,repair:repairData.length}[t];
+  });
+
+  // ── Filter by main tab ──
+  var tabData;
+  if(_ticketMainTab==='warranty') tabData=[...warrantyData];
+  else if(_ticketMainTab==='normal') tabData=[...normalData];
+  else tabData=[...repairData];
+
+  // Define "incoming" = first status of the flow / new ticket
+  var INCOMING_STATUSES = {
+    warranty: ['ตรวจสอบสิทธิ์ประกัน','รับเรื่องแล้ว'],
+    normal: ['รับเรื่องแล้ว'],
+    repair: ['รับเรื่องแล้ว']
+  };
+  var CLOSED_STATUS = 'ปิด Ticket';
+  var incomingStatuses = INCOMING_STATUSES[_ticketMainTab]||['รับเรื่องแล้ว'];
+
+  var incomingData = tabData.filter(function(d){ return incomingStatuses.indexOf(d.status)>=0; });
+  var closedData   = tabData.filter(function(d){ return d.status===CLOSED_STATUS; });
+  var ongoingData  = tabData.filter(function(d){ return incomingStatuses.indexOf(d.status)<0 && d.status!==CLOSED_STATUS; });
+
+  // Update main tab counts (badge style)
+  var tabCounts={warranty:warrantyData.length,normal:normalData.length,repair:repairData.length};
+  ['warranty','normal','repair'].forEach(function(t){
+    var el=document.getElementById('ticketMainCount_'+t);
+    if(el) el.textContent=tabCounts[t]>0?'('+tabCounts[t]+')':'';
+  });
+
+  // Update sub-filter pill counts
+  var countMap={all:tabData.length,incoming:incomingData.length,ongoing:ongoingData.length,closed:closedData.length};
+  ['all','incoming','ongoing','closed'].forEach(function(k){
+    var el=document.getElementById('subCount_'+k);
+    if(el)el.textContent=countMap[k]>0?'('+countMap[k]+')':'';
+  });
+
+  // Apply sub-filter
+  var data;
+  if(_ticketFilter==='incoming') data=incomingData;
+  else if(_ticketFilter==='ongoing') data=ongoingData;
+  else if(_ticketFilter==='closed') data=closedData;
+  else data=tabData; // 'all' or fallback
+
+  // ── Text search ──
   if(_ticketTextFilter)data=data.filter(d=>(d.ticketId||'').toLowerCase().includes(_ticketTextFilter)||(d.serial||'').toLowerCase().includes(_ticketTextFilter)||(d.name||'').toLowerCase().includes(_ticketTextFilter));
-  const counts={};TICKET_STATUSES.forEach(s=>{counts[s]=_ticketData.filter(d=>d.status===s).length;});
-  document.getElementById('ticketStats').innerHTML=`<div class="stat-card"><div class="stat-num">${_ticketData.length}</div><div class="stat-label">ทั้งหมด</div></div><div class="stat-card"><div class="stat-num">${_ticketData.filter(d=>!['ปิด Ticket','ส่งคืนลูกค้าแล้ว'].includes(d.status)).length}</div><div class="stat-label">เปิดอยู่</div></div><div class="stat-card"><div class="stat-num">${_ticketData.filter(d=>d.status==='ซ่อมเสร็จแล้ว'||d.status==='ส่งคืนลูกค้าแล้ว').length}</div><div class="stat-label">ซ่อมแล้ว</div></div><div class="stat-card"><div class="stat-num">${_ticketData.filter(d=>d.status==='ปิด Ticket').length}</div><div class="stat-label">ปิดแล้ว</div></div>`;
-  if(!data.length){document.getElementById('ticketTableBody').innerHTML='<tr><td colspan="11"><div class="empty-state">ไม่มีข้อมูล</div></td></tr>';return;}
-  document.getElementById('ticketTableBody').innerHTML=[...data].reverse().map(d=>{
-    const badgeClass=TICKET_STATUS_BADGE[d.status]||'badge-gray';
+
+  document.getElementById('ticketStats').innerHTML=
+    '<div class="stat-card"><div class="stat-num">'+data.length+'</div><div class="stat-label">แสดงอยู่</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+tabData.length+'</div><div class="stat-label">ในกลุ่มนี้</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+base.length+'</div><div class="stat-label">ทั้งหมด</div></div>';
+
+  // Show/hide Global export bar + column header
+  var isWarrantyClosedView = (_ticketMainTab==='warranty' && (_ticketFilter==='closed'||_ticketFilter==='all'));
+  var globalBar = document.getElementById('globalExportBar');
+  var globalTh = document.getElementById('globalClaimTh');
+  if(globalBar) globalBar.style.display = (_ticketMainTab==='warranty' && _ticketFilter==='closed') ? 'flex' : 'none';
+  if(globalTh) globalTh.style.display = isWarrantyClosedView ? '' : 'none';
+
+  if(!data.length){document.getElementById('ticketTableBody').innerHTML='<tr><td colspan="12"><div class="empty-state">ไม่มีข้อมูลในกลุ่มนี้</div></td></tr>';return;}
+  document.getElementById('ticketTableBody').innerHTML=[...data].reverse().map(function(d){
+    var badgeClass=TICKET_STATUS_BADGE[d.status]||'badge-gray';
+    var canDelete=!isTech;
+    var typeLabel = d.repairType==='warranty'
+      ? '<span style="font-size:10px;color:var(--green)">🛡 ในประกัน</span>'
+      : d.repairType==='repair_claim'
+        ? '<span style="font-size:10px;color:#7c3aed">🔄 ซ่อม Claim</span>'
+        : '<span style="font-size:10px;color:var(--orange)">🔧 ซ่อมปกติ</span>';
+
+    // Global Claim column — แสดงเฉพาะ warranty closed
+    var showGlobal = isWarrantyClosedView && d.repairType==='warranty' && d.status==='ปิด Ticket';
+    var gs = d.globalClaimStatus || 'pending';
+    var oldMachineLabel = {'sent_back':'✈️ ส่งคืน Global','kept_th':'🏠 ฝากที่ Thailand'}[d.gcOldMachine||'']||'';
+    var newMachineLabel = {'in_lot':'📋 รอ Lot: '+(d.gcLot||'?'),'received':'✅ ได้รับแล้ว'+(d.gcLot?' ('+d.gcLot+')'||'':'')}[d.gcNewMachine||'']||'';
+    var globalCell = showGlobal
+      ? (gs==='accepted'
+          ? '<div style="font-size:11px;line-height:1.8">'
+            +'<span class="badge badge-green" style="font-size:10px">✅ Global รับแล้ว</span><br>'
+            +(oldMachineLabel?'<span style="color:var(--muted)">'+oldMachineLabel+'</span><br>':'')
+            +(newMachineLabel?'<span style="color:var(--blue)">'+newMachineLabel+'</span><br>':'')
+            +'<button class="edit-btn" style="font-size:10px;margin-top:2px" onclick="openGlobalClaimUpdate(\''+d.ticketId+'\')">✏️ แก้ไข</button>'
+            +'</div>'
+          : gs==='rejected'
+            ? '<div><span class="badge badge-red" style="font-size:10px">❌ Global ปฏิเสธ</span><div style="font-size:10px;color:var(--muted);margin-top:2px">'+(d.globalClaimNote||'')+'</div>'
+              +'<button class="edit-btn" style="font-size:10px;margin-top:2px" onclick="openGlobalClaimUpdate(\''+d.ticketId+'\')">✏️ แก้ไข</button></div>'
+            : '<button class="edit-btn" style="font-size:10px;white-space:nowrap" onclick="openGlobalClaimUpdate(\''+d.ticketId+'\')">📋 อัปเดต Global</button>')
+      : '';
+
     return '<tr id="trow_'+d.ticketId+'">'
       +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.ticketId||'—')+'</td>'
       +'<td style="font-size:12px;white-space:nowrap">'+(d.createdAt?new Date(d.createdAt).toLocaleDateString('th-TH'):'—')+'</td>'
-      +'<td style="font-family:monospace;font-size:12px">'+(d.serial||'—')+'<br>'+(d.repairType==='warranty'?'<span style="font-size:10px;color:var(--green)">🛡 ในประกัน</span>':'<span style="font-size:10px;color:var(--orange)">🔧 ซ่อมปกติ</span>')+'</td>'
+      +'<td style="font-family:monospace;font-size:12px">'+(d.serial||'—')+'<br>'+typeLabel+'</td>'
       +'<td>'+(d.name||'—')+'</td>'
       +'<td>'+(d.phone||'—')+'</td>'
       +'<td style="max-width:140px;font-size:12px">'+(d.issueType||'—')+'</td>'
       +'<td>'+(d.logUrl?'<a href="'+d.logUrl+'" target="_blank" style="color:var(--blue);font-size:11px">📋 Log</a>':'<span style="color:var(--muted)">—</span>')+'</td>'
-      +'<td>'+(d.videoFilename?'<a href="'+DRIVE_VIDEO_URL+'" target="_blank" class="view-receipt-btn">🎥 VDO</a>':'<span style="color:var(--muted)">—</span>')+'</td>'
+      +'<td>'+(d.videoFilename?(
+        (d.videoUrl&&!d.videoUrl.includes('/folders/'))
+          ?'<a href="'+d.videoUrl+'" target="_blank" class="view-receipt-btn">🎥 VDO</a>'
+          :'<button class="view-receipt-btn" onclick="openVideoFile(\''+d.videoFilename.replace(/'/g,"\\'")+'\')" >🎥 VDO</button>'
+        ):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td><span class="badge '+badgeClass+'">'+(d.status||'—')+'</span></td>'
       +'<td style="font-size:12px">'+(d.assignedTo||'<span style="color:var(--muted)">—</span>')+'</td>'
-      +'<td style="white-space:nowrap;display:flex;gap:6px;padding:11px 14px"><button class="edit-btn" onclick="openTicketEdit(\''+d.ticketId+'\')">✏️ อัปเดต</button><button class="del-btn" onclick="openDeleteTicket(\''+d.ticketId+'\')" title="ลบ Ticket">🗑</button></td>'
+      +'<td style="min-width:120px"'+(isWarrantyClosedView?'':' style="display:none"')+'>'+globalCell+'</td>'
+      +'<td style="white-space:nowrap;display:flex;gap:6px;padding:11px 14px"><button class="edit-btn" onclick="openTicketEdit(\''+d.ticketId+'\')">✏️ อัปเดต</button>'+(canDelete?'<button class="del-btn" onclick="openDeleteTicket(\''+d.ticketId+'\')" title="ลบ Ticket">🗑</button>':'')+'</td>'
       +'</tr>';
   }).join('');
 }
-function openTicketEdit(ticketId){
-  const ticket=_ticketData.find(d=>d.ticketId===ticketId); if(!ticket)return;
-  window._editingTicket=ticket;
-  const repairBadge = ticket.repairType==='warranty' ? '<span style="color:var(--green)">🛡 ในประกัน</span>' : '<span style="color:var(--orange)">🔧 ซ่อมปกติ</span>';
-  document.getElementById('etTicketInfo').innerHTML='<strong>'+ticketId+'</strong> '+repairBadge+'<br>S/N: '+ticket.serial+' · '+ticket.name+(ticket.lineId?' · Line: <strong>'+ticket.lineId+'</strong>':'')+'<br>📞 '+ticket.phone+' | '+ticket.issueType;
-  document.getElementById('et_status').value=ticket.status||'รับเรื่องแล้ว';
-  document.getElementById('et_assigned').value=ticket.assignedTo||'';
-  document.getElementById('et_staffnote').value=ticket.staffNote||'';
-  document.getElementById('et_technote').value=ticket.techNote||'';
-  document.getElementById('editTicketModal').classList.add('open');
+// ══ WARRANTY LINEAR FLOW ══
+// ══ WARRANTY BRANCHING FLOW ══
+// Case 1: แก้ไขได้โดยไม่ต้องเปลี่ยนเครื่อง
+// Case 2: ต้องเปลี่ยนเครื่องใหม่
+
+// Statuses ที่อยู่ในแต่ละ Case
+const WARRANTY_CASE1_STATUSES = ['ตรวจสอบสิทธิ์ประกัน','แจ้งวิธีแก้ไข','แก้ไขสำเร็จ','ปิด Ticket'];
+const WARRANTY_CASE2_STATUSES = ['ตรวจสอบสิทธิ์ประกัน','แจ้งวิธีแก้ไข','แก้ไขไม่สำเร็จ','รับเครื่องมาวิเคราะห์','อนุมัติการเคลมเครื่องใหม่','ส่งเครื่องใหม่ให้ลูกค้า','ปิด Ticket'];
+const WARRANTY_CASE1_ONLY = ['แก้ไขสำเร็จ'];
+const WARRANTY_CASE2_ONLY = ['แก้ไขไม่สำเร็จ','รับเครื่องมาวิเคราะห์','อนุมัติการเคลมเครื่องใหม่','ส่งเครื่องใหม่ให้ลูกค้า'];
+
+// Case 1 steps
+const WARRANTY_FLOW_CASE1 = [
+  { status:'ตรวจสอบสิทธิ์ประกัน', icon:'📋', label:'ตรวจสอบสิทธิ์',
+    desc:'ตรวจสอบว่าเครื่องอยู่ในประกันและอาการอยู่ในขอบเขตเงื่อนไข',
+    isBranch:false, nextLabel:'แจ้งวิธีแก้ไข →', nextStatus:'แจ้งวิธีแก้ไข',
+    renderFields:function(){ return '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;margin-bottom:6px">🔍</div><div style="font-size:14px;font-weight:600;color:#856404">ตรวจสอบสิทธิ์ประกัน</div><div style="font-size:12px;color:#a07800;margin-top:4px">ยืนยันว่าเครื่องอยู่ในประกัน</div></div>'; },
+    validate:function(){ return null; }
+  },
+  { status:'แจ้งวิธีแก้ไข', icon:'💬', label:'แจ้งวิธีแก้ไข',
+    desc:'แจ้งวิธีแก้ไขให้ลูกค้าทราบ จากนั้นเลือกผลลัพธ์',
+    isBranch:true, nextLabel:null, nextStatus:null,
+    renderFields:function(ticket){
+      return '<div style="margin-bottom:12px">'
+        +'<div class="sub-title">วิธีแก้ไขที่แนะนำ <span style="color:var(--red)">*</span></div>'
+        +'<textarea id="step_fixmethod" placeholder="อธิบายวิธีแก้ไขที่แนะนำให้ลูกค้า..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;min-height:80px">'+(ticket.staffNote||'')+'</textarea>'
+        +'</div>';
+    },
+    validate:function(){
+      var m=(document.getElementById('step_fixmethod')||{value:''}).value.trim();
+      if(!m) return 'กรุณากรอกวิธีแก้ไขที่แนะนำ';
+      return null;
+    }
+  },
+  { status:'แก้ไขสำเร็จ', icon:'✅', label:'แก้ไขสำเร็จ',
+    desc:'ยืนยันว่าลูกค้าแก้ไขปัญหาได้สำเร็จแล้ว',
+    isBranch:false, nextLabel:'🏁 ปิด Ticket', nextStatus:'ปิด Ticket',
+    renderFields:function(){ return '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:15px;font-weight:600;color:#15803d">แก้ไขปัญหาสำเร็จ!</div><div style="font-size:13px;color:#166534;margin-top:4px">ยืนยันว่าลูกค้าแก้ไขได้แล้ว</div></div>'; },
+    validate:function(){ return null; }
+  },
+  { status:'ปิด Ticket', icon:'🏁', label:'ปิด Ticket',
+    desc:'เสร็จสิ้น',
+    isBranch:false, nextLabel:null, nextStatus:null,
+    renderFields:function(){ return '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;text-align:center"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:15px;font-weight:600;color:#15803d">ปิด Ticket เรียบร้อย</div></div>'; },
+    validate:function(){ return null; }
+  }
+];
+
+// Case 2 steps
+const WARRANTY_FLOW_CASE2 = [
+  { status:'ตรวจสอบสิทธิ์ประกัน', icon:'📋', label:'ตรวจสอบสิทธิ์',
+    desc:'ตรวจสอบว่าเครื่องอยู่ในประกันและอาการอยู่ในขอบเขตเงื่อนไข',
+    isBranch:false, nextLabel:'แจ้งวิธีแก้ไข →', nextStatus:'แจ้งวิธีแก้ไข',
+    renderFields:function(){ return '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;margin-bottom:6px">🔍</div><div style="font-size:14px;font-weight:600;color:#856404">ตรวจสอบสิทธิ์ประกัน</div><div style="font-size:12px;color:#a07800;margin-top:4px">ยืนยันว่าเครื่องอยู่ในประกัน</div></div>'; },
+    validate:function(){ return null; }
+  },
+  { status:'แจ้งวิธีแก้ไข', icon:'💬', label:'แจ้งวิธีแก้ไข',
+    desc:'แจ้งวิธีแก้ไขให้ลูกค้าทราบ จากนั้นเลือกผลลัพธ์',
+    isBranch:true, nextLabel:null, nextStatus:null,
+    renderFields:function(ticket){
+      return '<div style="margin-bottom:12px">'
+        +'<div class="sub-title">วิธีแก้ไขที่แนะนำ <span style="color:var(--red)">*</span></div>'
+        +'<textarea id="step_fixmethod" placeholder="อธิบายวิธีแก้ไขที่แนะนำให้ลูกค้า..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;min-height:80px">'+(ticket.staffNote||'')+'</textarea>'
+        +'</div>';
+    },
+    validate:function(){
+      var m=(document.getElementById('step_fixmethod')||{value:''}).value.trim();
+      if(!m) return 'กรุณากรอกวิธีแก้ไขที่แนะนำ';
+      return null;
+    }
+  },
+  { status:'แก้ไขไม่สำเร็จ', icon:'❌', label:'แก้ไขไม่สำเร็จ',
+    desc:'รับเครื่องมาวิเคราะห์เพิ่มเติม (ขั้นนี้ภายในเท่านั้น)',
+    isBranch:false, nextLabel:'🔬 รับเครื่องมาวิเคราะห์ →', nextStatus:'รับเครื่องมาวิเคราะห์',
+    renderFields:function(){ return '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:20px;text-align:center"><div style="font-size:32px;margin-bottom:8px">❌</div><div style="font-size:15px;font-weight:600;color:#dc2626">แก้ไขไม่สำเร็จ — ต้องรับเครื่องมาวิเคราะห์</div><div style="font-size:12px;color:#b91c1c;margin-top:4px">กดปุ่มด้านล่างเพื่อดำเนินการต่อ</div></div>'; },
+    validate:function(){ return null; }
+  },
+  { status:'รับเครื่องมาวิเคราะห์', icon:'🔬', label:'รับเครื่องมาวิเคราะห์',
+    desc:'บันทึกข้อมูลการรับเครื่องจากลูกค้าเพื่อวิเคราะห์ (ภายในเท่านั้น)',
+    isBranch:false, nextLabel:'✅ อนุมัติการเคลมเครื่องใหม่ →', nextStatus:'อนุมัติการเคลมเครื่องใหม่',
+    renderFields:function(ticket){
+      var today=new Date().toISOString().slice(0,10);
+      return '<div style="margin-bottom:12px">'
+        +'<div class="sub-title">วันที่รับเครื่อง <span style="color:var(--red)">*</span></div>'
+        +'<input type="date" id="step_returndate" value="'+(ticket.returnDate||today)+'" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" />'
+        +'</div>'
+        +'<div>'
+        +'<div class="sub-title">วิธีรับเครื่อง <span style="color:var(--red)">*</span></div>'
+        +'<div class="select-wrap"><select id="step_returnmethod" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;background:var(--input-bg);appearance:none">'
+        +'<option value="">— เลือกวิธี —</option>'
+        +'<option>Kerry Express</option><option>Flash Express</option><option>J&T Express</option>'
+        +'<option>Thailand Post (EMS)</option><option>DHL</option>'
+        +'<option>ลูกค้านำส่งด้วยตัวเอง</option><option>Staff รับโดยตรง</option><option>อื่นๆ</option>'
+        +'</select></div>'
+        +'</div>';
+    },
+    validate:function(){
+      var d=(document.getElementById('step_returndate')||{value:''}).value.trim();
+      var m=(document.getElementById('step_returnmethod')||{value:''}).value.trim();
+      if(!d) return 'กรุณาระบุวันที่รับเครื่อง';
+      if(!m) return 'กรุณาเลือกวิธีรับเครื่อง';
+      return null;
+    }
+  },
+  { status:'อนุมัติการเคลมเครื่องใหม่', icon:'✅', label:'อนุมัติการเคลม',
+    desc:'กรอกชื่อผู้อนุมัติและ S/N เครื่องใหม่ที่จะส่งให้ลูกค้า',
+    isBranch:false, nextLabel:'📦 ส่งเครื่องใหม่ให้ลูกค้า →', nextStatus:'ส่งเครื่องใหม่ให้ลูกค้า',
+    renderFields:function(ticket){
+      var approvedByVal=ticket.approvedBy||(_currentUser?_currentUser.name:'');
+      var newSerialVal=ticket._pendingNewSerial||'';
+      return '<div style="margin-bottom:12px">'
+        +'<div class="sub-title">อนุมัติโดย <span style="color:var(--red)">*</span></div>'
+        +'<input type="text" id="step_approvedby" value="'+approvedByVal+'" placeholder="ชื่อผู้อนุมัติ" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" />'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">🔒 บันทึกภายใน ไม่แสดงลูกค้า</div>'
+        +'</div>'
+        +'<div>'
+        +'<div class="sub-title">S/N เครื่องใหม่ <span style="color:var(--red)">*</span></div>'
+        +'<input type="text" id="step_newserial" value="'+newSerialVal+'" placeholder="เช่น J15A01B4BS000" autocapitalize="characters" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" />'
+        +'<div style="font-size:11px;color:#a16207;margin-top:4px">✅ ระบบจะสร้างประกันให้เครื่องใหม่อัตโนมัติ</div>'
+        +'<div id="etNewSerialStatus" style="margin-top:6px;font-size:12px;display:none"></div>'
+        +'</div>';
+    },
+    validate:function(){
+      var by=(document.getElementById('step_approvedby')||{value:''}).value.trim();
+      var sn=(document.getElementById('step_newserial')||{value:''}).value.trim();
+      if(!by) return 'กรุณากรอกชื่อผู้อนุมัติ';
+      if(!sn) return 'กรุณากรอก S/N เครื่องใหม่';
+      return null;
+    }
+  },
+  { status:'ส่งเครื่องใหม่ให้ลูกค้า', icon:'📦', label:'ส่งเครื่องใหม่',
+    desc:'กรอก tracking number เพื่อให้ลูกค้าติดตามพัสดุได้',
+    isBranch:false, nextLabel:'🏁 ปิด Ticket', nextStatus:'ปิด Ticket',
+    renderFields:function(ticket){
+      return '<div>'
+        +'<div class="sub-title">Tracking Number / Link <span style="color:var(--red)">*</span></div>'
+        +'<input type="text" id="step_tracking" value="'+(ticket.trackingLink||'')+'" placeholder="เช่น TH123456789" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" />'
+        +'<div style="font-size:11px;color:#1e40af;margin-top:4px">📦 ลูกค้าจะเห็น tracking นี้ในหน้าติดตามซ่อม</div>'
+        +'</div>';
+    },
+    validate:function(){
+      var t=(document.getElementById('step_tracking')||{value:''}).value.trim();
+      if(!t) return 'กรุณากรอก Tracking Number';
+      return null;
+    }
+  },
+  { status:'ปิด Ticket', icon:'🏁', label:'ปิด Ticket',
+    desc:'เคลมเสร็จสิ้น ระบบจะสร้างงานซ่อมเครื่องเก่าใน Repair Claim อัตโนมัติ',
+    isBranch:false, nextLabel:null, nextStatus:null,
+    renderFields:function(){ return '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;text-align:center"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:15px;font-weight:600;color:#15803d">เคลมเสร็จสิ้น</div><div style="font-size:13px;color:#166534;margin-top:4px">ระบบสร้าง Repair Claim ticket อัตโนมัติแล้ว</div></div>'; },
+    validate:function(){ return null; }
+  }
+];
+
+// สำหรับ backward compat
+const WARRANTY_FLOW = WARRANTY_FLOW_CASE1;
+
+function getWarrantyCase(status) {
+  if(WARRANTY_CASE2_ONLY.includes(status)) return 2;
+  if(WARRANTY_CASE1_ONLY.includes(status)) return 1;
+  return 0; // ยังไม่รู้ (ตรวจสอบสิทธิ์ / แจ้งวิธีแก้ไข / ปิด Ticket)
 }
-function saveTicketEdit(){
-  const ticket=window._editingTicket; if(!ticket)return;
-  const status=document.getElementById('et_status').value;
-  const assignedTo=document.getElementById('et_assigned').value.trim();
-  const staffNote=document.getElementById('et_staffnote').value.trim();
-  const techNote=document.getElementById('et_technote').value.trim();
-  const cbName='teCb_'+Date.now(),s=document.createElement('script');
-  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);closeModal('editTicketModal');loadTickets();};
-  s.onerror=function(){delete window[cbName];closeModal('editTicketModal');loadTickets();};
-  s.src=SHEETS_URL+'?action=updateTicket&ticketId='+encodeURIComponent(ticket.ticketId)+'&status='+encodeURIComponent(status)+'&assignedTo='+encodeURIComponent(assignedTo)+'&staffNote='+encodeURIComponent(staffNote)+'&techNote='+encodeURIComponent(techNote)+'&delpw=adminaccessonly&callback='+cbName+'&t='+Date.now();
+function getActiveFlow(ticket) {
+  var wCase = ticket.warrantyCase;
+  if(wCase==='2'||wCase===2) return WARRANTY_FLOW_CASE2;
+  if(wCase==='1'||wCase===1) return WARRANTY_FLOW_CASE1;
+  // detect from status
+  var detectedCase = getWarrantyCase(ticket.status||'');
+  if(detectedCase===2) return WARRANTY_FLOW_CASE2;
+  return WARRANTY_FLOW_CASE1; // default case 1
+}
+
+function renderWarrantyStepper(ticket){
+  var currentStatus = ticket.status || 'ตรวจสอบสิทธิ์ประกัน';
+  var isClosed = currentStatus==='ปิด Ticket';
+
+  // ถ้ายังไม่รู้ case (อยู่ที่ขั้นต้น) → แสดง case1 flow ก่อน แต่ถ้าสถานะ branch จะ override
+  var flow = getActiveFlow(ticket);
+  var currentIdx = flow.findIndex(function(s){return s.status===currentStatus;});
+  if(currentIdx<0) currentIdx=0;
+  var step = flow[currentIdx];
+
+  // Progress bar
+  document.getElementById('etStepProgress').innerHTML = flow.map(function(s,i){
+    var done=i<currentIdx, active=i===currentIdx;
+    var bg=done?'var(--green)':active?'var(--accent)':'var(--border)';
+    var tc=(done||active)?'#fff':'var(--muted)';
+    return '<div style="display:flex;flex-direction:column;align-items:center;flex:1">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';color:'+tc+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">'+(done?'✓':(i+1))+'</div>'
+      +'<div style="font-size:9px;color:'+((done||active)?'var(--text)':'var(--muted)')+';margin-top:4px;text-align:center;max-width:52px;line-height:1.2">'+s.label+'</div>'
+      +'</div>';
+  }).join('');
+
+  var fieldsHTML = step.renderFields ? step.renderFields(ticket) : '';
+  document.getElementById('etStepContent').innerHTML =
+    '<div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">'
+    +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">ขั้นที่ '+(currentIdx+1)+' จาก '+flow.length+'</div>'
+    +'<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px">'+step.icon+' '+step.label+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+step.desc+'</div>'
+    +'</div>'
+    +fieldsHTML
+    +'<div class="field" style="margin-top:12px"><label>หมายเหตุ Staff (ถ้ามี)</label>'
+    +'<textarea id="et_staffnote" placeholder="บันทึกภายใน..." style="min-height:60px">'+(ticket.staffNote||'')+'</textarea></div>';
+
+  var nextBtn = document.getElementById('etNextBtn');
+  var modalBtns = nextBtn.parentElement;
+
+  // ลบ branch buttons เก่า
+  var old1=document.getElementById('etBranchBtn1'), old2=document.getElementById('etBranchBtn2');
+  if(old1)old1.remove(); if(old2)old2.remove();
+
+  if(isClosed){
+    nextBtn.style.display='none';
+  } else if(step.isBranch){
+    // แสดง 2 ปุ่ม branch แทน
+    nextBtn.style.display='none';
+    var btn1=document.createElement('button');
+    btn1.id='etBranchBtn1';
+    btn1.className='modal-confirm';
+    btn1.style.cssText='background:var(--green);flex:1';
+    btn1.textContent='✅ แก้ไขสำเร็จ';
+    btn1.onclick=function(){ saveTicketEditBranch('แก้ไขสำเร็จ',1); };
+    var btn2=document.createElement('button');
+    btn2.id='etBranchBtn2';
+    btn2.className='modal-confirm';
+    btn2.style.cssText='background:var(--red);flex:1';
+    btn2.textContent='❌ แก้ไขไม่สำเร็จ (เปลี่ยนเครื่อง)';
+    btn2.onclick=function(){ saveTicketEditBranch('แก้ไขไม่สำเร็จ',2); };
+    modalBtns.appendChild(btn1);
+    modalBtns.appendChild(btn2);
+  } else if(step.nextLabel){
+    nextBtn.style.display='';
+    nextBtn.textContent=step.nextLabel;
+    nextBtn.dataset.nextstatus=step.nextStatus||'';
+  } else {
+    nextBtn.style.display='none';
+  }
+}
+
+function saveTicketEditBranch(nextStatus, warrantyCase){
+  // validate current step first
+  var ticket=window._editingTicket; if(!ticket)return;
+  var flow=getActiveFlow(ticket);
+  var currentStatus=ticket.status||'ตรวจสอบสิทธิ์ประกัน';
+  var step=flow.find(function(s){return s.status===currentStatus;});
+  if(step&&step.validate){var err=step.validate();if(err){alert(err);return;}}
+  var staffNote=(document.getElementById('step_fixmethod')||{value:''}).value.trim()
+    ||(document.getElementById('et_staffnote')||{value:''}).value.trim();
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+
+  var btn1=document.getElementById('etBranchBtn1'),btn2=document.getElementById('etBranchBtn2');
+  if(btn1)btn1.disabled=true; if(btn2)btn2.disabled=true;
+
+  var cbName='bCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(btn1)btn1.disabled=false;if(btn2)btn2.disabled=false;
+    // อัปเดต status + warrantyCase ใน memory แล้ว re-render
+    ticket.status=nextStatus;
+    ticket.warrantyCase=String(warrantyCase);
+    if(staffNote) ticket.staffNote=staffNote;
+    var idx=_ticketData.findIndex(function(t){return t.ticketId===ticket.ticketId;});
+    if(idx>=0) _ticketData[idx]=ticket;
+    renderWarrantyStepper(ticket);
+  };
+  s.onerror=function(){delete window[cbName];if(btn1)btn1.disabled=false;if(btn2)btn2.disabled=false;closeModal('editTicketModal');loadTickets();};
+  s.src=SHEETS_URL+'?action=updateTicket'
+    +'&ticketId='+encodeURIComponent(ticket.ticketId)
+    +'&status='+encodeURIComponent(nextStatus)
+    +'&warrantyCase='+warrantyCase
+    +'&staffNote='+encodeURIComponent(staffNote)
+    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
+
+// ══ REPAIR CLAIM FLOW ══
+const REPAIR_CLAIM_FLOW = [
+  // ── Step 1: Admin มอบหมายช่าง ──
+  {
+    status: 'รับเรื่องแล้ว', icon: '👨‍🔧', label: 'มอบหมายช่าง',
+    by: 'admin', desc: 'Admin เลือกช่างที่รับผิดชอบ',
+    nextLabel: '👨‍🔧 มอบหมายช่าง →', nextStatus: 'มอบหมายช่าง',
+    renderFields: function(ticket) {
+      var assignedVal = ticket.assignedTo || '';
+      var opts = '<option value="">— เลือกช่าง —</option>';
+      if(window._technicianList && window._technicianList.length){
+        window._technicianList.forEach(function(u){ opts += '<option value="'+u.name+'"'+(u.name===assignedVal?' selected':'')+'>'+u.name+'</option>'; });
+      } else if(assignedVal){
+        opts += '<option value="'+assignedVal+'" selected>'+assignedVal+'</option>';
+      }
+      return '<div>'
+        + '<div class="sub-title">มอบหมายให้ช่าง <span style="color:var(--red)">*</span></div>'
+        + '<div class="select-wrap"><select id="rc_assigned" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;background:var(--input-bg);appearance:none">'+opts+'</select></div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:6px">ช่างจะเห็น ticket นี้และสามารถรับงานได้</div>'
+        + '</div>';
+    },
+    validate: function() {
+      var a = (document.getElementById('rc_assigned')||{value:''}).value.trim();
+      if(!a) return 'กรุณาเลือกช่าง';
+      return null;
+    }
+  },
+  // ── Step 2: Technician อ่านข้อมูล + ระบุวันซ่อม ──
+  {
+    status: 'มอบหมายช่าง', icon: '📋', label: 'รับงาน',
+    by: 'technician', desc: 'ช่างอ่านข้อมูลและระบุวันซ่อม',
+    nextLabel: '🔧 รับงานซ่อม →', nextStatus: 'ช่างรับเรื่องซ่อม',
+    renderFields: function(ticket) {
+      var today = new Date().toISOString().slice(0,10);
+      var infoHtml = '<div style="background:#f0f4ff;border:1.5px solid #c7d7fd;border-radius:12px;padding:14px;margin-bottom:14px">'
+        + '<div style="font-size:11px;font-weight:600;color:#1e40af;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">📋 ข้อมูลจากลูกค้า</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">S/N เครื่อง</div><div style="font-size:14px;font-weight:700;font-family:monospace">'+(ticket.serial||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">ลูกค้า</div><div style="font-size:14px;font-weight:600">'+(ticket.name||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">เบอร์โทร</div><div style="font-size:14px">'+(ticket.phone||'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Line ID</div><div style="font-size:14px">'+(ticket.lineId||'—')+'</div></div>'
+        + '</div>'
+        + '<div style="background:#fef9c3;border-radius:8px;padding:10px;margin-bottom:8px">'
+        + '<div style="font-size:10px;color:#92400e;margin-bottom:4px">⚠ ประเภทอาการ</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#78350f">'+(ticket.issueType||'—')+'</div>'
+        + '</div>'
+        + (ticket.description?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">📝 รายละเอียด</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+ticket.description+'</div></div>':'')
+        + (ticket.logUrl?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>📋</span><a href="'+ticket.logUrl+'" target="_blank" style="font-size:13px;color:var(--blue)">Machine Log</a></div>':'');
+
+      // VDO - ดึงจาก original warranty ticket ถ้าไม่มี
+      var vdoHtml = '';
+      if(ticket.videoFilename||ticket.videoUrl){
+        vdoHtml = '<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+(ticket.videoUrl||DRIVE_VIDEO_URL)+'" target="_blank" style="font-size:13px;color:var(--blue)">'+(ticket.videoFilename||'ดูวิดีโอ')+'</a></div>';
+      } else {
+        var refMatch=(ticket.issueType||'').match(/อ้างอิง: (TK-[\d-]+)/);
+        if(refMatch){
+          var orig=_ticketData.find(function(t){return t.ticketId===refMatch[1];});
+          if(orig&&(orig.videoFilename||orig.videoUrl)){
+            vdoHtml='<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+(orig.videoUrl||DRIVE_VIDEO_URL)+'" target="_blank" style="font-size:13px;color:var(--blue)">VDO อาการ ('+refMatch[1]+')</a></div>';
+          }
+        }
+      }
+      infoHtml += vdoHtml + '</div>';
+
+      // วันซ่อม (ช่างกำหนดเอง)
+      infoHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        + '<div><div class="sub-title">วันที่จะซ่อม <span style="color:var(--red)">*</span></div>'
+        + '<input type="date" id="rc_scheduledate" value="'+today+'" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" /></div>'
+        + '<div><div class="sub-title">วันที่คาดว่าเสร็จ <span style="color:var(--red)">*</span></div>'
+        + '<input type="date" id="rc_duedate" value="'+today+'" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none" /></div>'
+        + '</div>';
+      return infoHtml;
+    },
+    validate: function() {
+      var s = (document.getElementById('rc_scheduledate')||{value:''}).value.trim();
+      var d = (document.getElementById('rc_duedate')||{value:''}).value.trim();
+      if(!s) return 'กรุณาระบุวันที่จะซ่อม';
+      if(!d) return 'กรุณาระบุวันที่คาดว่าเสร็จ';
+      return null;
+    }
+  },
+  // ── Step 3: Technician กำลังซ่อม ──
+  {
+    status: 'ช่างรับเรื่องซ่อม', icon: '🔧', label: 'กำลังซ่อม',
+    by: 'technician', desc: 'ช่างยืนยันรับเรื่องและดำเนินการซ่อม',
+    nextLabel: '✅ ซ่อมเสร็จแล้ว →', nextStatus: 'ซ่อมเสร็จแล้ว',
+    renderFields: function(ticket) {
+      return '<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:20px;text-align:center">'
+        + '<div style="font-size:32px;margin-bottom:8px">🔧</div>'
+        + '<div style="font-size:15px;font-weight:600;color:#1e40af">กำลังซ่อม — '+(ticket.assignedTo||'—')+'</div>'
+        + '<div style="font-size:12px;color:#3b82f6;margin-top:4px">กดปุ่มเมื่อซ่อมเสร็จแล้ว</div></div>';
+    },
+    validate: function() { return null; }
+  },
+  // ── Step 4: Technician ซ่อมเสร็จ + VDO ──
+  {
+    status: 'ซ่อมเสร็จแล้ว', icon: '✅', label: 'ซ่อมเสร็จ',
+    by: 'technician', desc: 'ช่างสรุปผลการซ่อมพร้อมแนบ VDO หลักฐาน',
+    nextLabel: '📨 ส่งให้ Admin ปิด Ticket', nextStatus: 'รอปิด Ticket',
+    renderFields: function(ticket) {
+      return '<div style="margin-bottom:14px">'
+        + '<div class="sub-title">สรุปผลการซ่อม <span style="color:var(--red)">*</span></div>'
+        + '<textarea id="rc_techresult" placeholder="อธิบายสิ่งที่ซ่อม วิธีแก้ไข อะไหล่ที่เปลี่ยน..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:14px;outline:none;min-height:80px">'+(ticket.techNote||'')+'</textarea>'
+        + '</div>'
+        + '<div>'
+        + '<div class="sub-title">VDO หลักฐานการซ่อม <span style="color:var(--red)">*</span></div>'
+        + '<div id="rcVideoUploadArea" class="upload-area" onclick="document.getElementById(\'rc_video_input\').click()" style="flex-direction:column;align-items:flex-start;gap:6px;padding:16px;cursor:pointer">'
+        + '  <div style="display:flex;align-items:center;gap:8px"><span style="font-size:24px">🎥</span><div><div style="font-weight:600;font-size:13px">คลิกเพื่ออัปโหลด VDO หลักฐานการซ่อม</div><div style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — ไม่เกิน 100MB</div></div></div>'
+        + '  <div id="rcVideoProgressWrap" style="display:none;width:100%">'
+        + '    <div style="font-size:12px;color:var(--muted);margin-bottom:4px" id="rcVideoProgressText">⏳ กำลังโหลด...</div>'
+        + '    <div style="height:4px;background:var(--border);border-radius:2px"><div id="rcVideoProgressBar" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s"></div></div>'
+        + '  </div>'
+        + '  <div id="rcVideoStatus" style="font-size:12px;display:none"></div>'
+        + '</div>'
+        + '<input type="file" id="rc_video_input" class="file-hidden" accept="video/*,.mp4,.mov,.avi,.mkv" onchange="handleRcVideoFile(this)" />'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:4px">อัด VDO สั้น เปิดเครื่อง ทดสอบ ให้ครบ</div>'
+        + '</div>';
+    },
+    validate: function() {
+      var r = (document.getElementById('rc_techresult')||{value:''}).value.trim();
+      if(!r) return 'กรุณากรอกสรุปผลการซ่อม';
+      if(!window._rcVideoUploaded) return 'กรุณาอัปโหลด VDO หลักฐานการซ่อม';
+      return null;
+    }
+  },
+  // ── Step 5: Admin ปิด Ticket ──
+  {
+    status: 'รอปิด Ticket', icon: '🏁', label: 'ปิด Ticket',
+    by: 'admin', desc: 'Admin ตรวจสอบและปิด Ticket',
+    nextLabel: '🏁 ปิด Ticket', nextStatus: 'ปิด Ticket',
+    renderFields: function(ticket) {
+      return '<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:16px">'
+        + '<div style="font-size:13px;font-weight:600;color:#7c3aed;margin-bottom:10px">✅ ช่าง '+( ticket.assignedTo||'—')+' รายงานว่าซ่อมเสร็จแล้ว</div>'
+        + (ticket.techNote?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">สรุปผลจากช่าง</div><div style="font-size:13px;line-height:1.6">'+ticket.techNote+'</div></div>':'')
+        + (ticket.videoProof?'<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+ticket.videoProof+'" target="_blank" style="font-size:13px;color:var(--blue)">VDO หลักฐานการซ่อม</a></div>':'')
+        + '</div>';
+    },
+    validate: function() { return null; }
+  },
+  // ── Closed state ──
+  {
+    status: 'ปิด Ticket', icon: '🎉', label: 'ปิดแล้ว',
+    by: 'system', desc: 'เสร็จสิ้น เครื่องถูกบันทึกเป็น Subscription Machine แล้ว',
+    nextLabel: null, nextStatus: null,
+    renderFields: function() {
+      return '<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:20px;text-align:center">'
+        + '<div style="font-size:32px;margin-bottom:8px">🎉</div>'
+        + '<div style="font-size:15px;font-weight:600;color:#7c3aed">ซ่อมเสร็จสิ้น!</div>'
+        + '<div style="font-size:13px;color:#6d28d9;margin-top:4px">เครื่องถูกบันทึกเป็น Subscription Machine แล้ว</div></div>';
+    },
+    validate: function() { return null; }
+  }
+];
+function renderRepairClaimStepper(ticket) {
+  var currentStatus = ticket.status || 'รับเรื่องแล้ว';
+  var isClosed = currentStatus === 'ปิด Ticket';
+  var currentIdx = REPAIR_CLAIM_FLOW.findIndex(function(s){return s.status===currentStatus;});
+  if(currentIdx<0) currentIdx=0;
+  var step = REPAIR_CLAIM_FLOW[currentIdx];
+
+  // Progress
+  document.getElementById('etRcStepProgress').innerHTML = REPAIR_CLAIM_FLOW.map(function(s,i){
+    var done=i<currentIdx, active=i===currentIdx;
+    var bg=done?'var(--green)':active?'#7c3aed':'var(--border)';
+    var tc=(done||active)?'#fff':'var(--muted)';
+    return '<div style="display:flex;flex-direction:column;align-items:center;flex:1">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';color:'+tc+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">'+(done?'✓':(i+1))+'</div>'
+      +'<div style="font-size:9px;color:'+((done||active)?'var(--text)':'var(--muted)')+';margin-top:4px;text-align:center;max-width:52px;line-height:1.2">'+s.label+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Content
+  var fieldsHTML = step.renderFields ? step.renderFields(ticket) : '';
+  document.getElementById('etRcStepContent').innerHTML =
+    '<div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">'
+    +'<div style="font-size:10px;color:#7c3aed;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;font-weight:600">🔄 ซ่อม Claim — ขั้นที่ '+(currentIdx+1)+' จาก '+REPAIR_CLAIM_FLOW.length+'</div>'
+    +'<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px">'+step.icon+' '+step.label+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+step.desc+'</div>'
+    +'</div>'
+    +fieldsHTML
+    +'<div class="field" style="margin-top:12px"><label>หมายเหตุ (ถ้ามี)</label>'
+    +'<textarea id="et_staffnote" placeholder="บันทึกภายใน..." style="min-height:60px">'+(ticket.staffNote||'')+'</textarea></div>';
+
+  // Next button + Back button
+  var nextBtn = document.getElementById('etRcNextBtn');
+  var modalBtns = nextBtn.parentElement;
+  var oldBack = document.getElementById('etRcBackBtn');
+  if(oldBack) oldBack.remove();
+
+  if(isClosed){ nextBtn.style.display='none'; }
+  else if(step.nextLabel){
+    nextBtn.style.display='';
+    nextBtn.textContent = step.nextLabel;
+    nextBtn.style.background = '#7c3aed';
+    nextBtn.dataset.nextstatus = step.nextStatus||'';
+  } else { nextBtn.style.display='none'; }
+
+  // Back button (แสดงถ้าไม่ใช่ขั้นแรก)
+  if(currentIdx > 0 && !isClosed){
+    var backBtn = document.createElement('button');
+    backBtn.id = 'etRcBackBtn';
+    backBtn.className = 'modal-cancel';
+    backBtn.textContent = '← ย้อนกลับ';
+    backBtn.style.cssText = 'flex:0.5;margin-right:8px';
+    backBtn.onclick = function(){
+      var prevStatus = REPAIR_CLAIM_FLOW[currentIdx-1].status;
+      saveRepairClaimStep(prevStatus, true); // true = going back
+    };
+    modalBtns.insertBefore(backBtn, nextBtn);
+  }
+}
+
+function openTicketEdit(ticketId){
+  var ticket=_ticketData.find(function(d){return d.ticketId===ticketId;}); if(!ticket)return;
+  var isTech=_currentUser&&_currentUser.role==='technician';
+  var isWarranty=ticket.repairType==='warranty';
+  window._editingTicket=ticket;
+
+  var repairBadge=isWarranty
+    ?'<span style="color:var(--green)">🛡 ในประกัน</span>'
+    :'<span style="color:var(--orange)">🔧 ซ่อมปกติ</span>';
+  document.getElementById('etTicketInfo').innerHTML=
+    '<strong>'+ticketId+'</strong> '+repairBadge+'<br>'
+    +'S/N: <strong>'+ticket.serial+'</strong> · '+ticket.name
+    +(ticket.lineId?' · Line: <strong>'+ticket.lineId+'</strong>':'')+'<br>'
+    +'📞 '+ticket.phone+' | '+ticket.issueType;
+
+  document.getElementById('etMachineHistory').style.display=isWarranty?'block':'none';
+  if(isWarranty){ document.getElementById('etMachineChain').innerHTML='⏳ กำลังโหลดประวัติเครื่อง...'; loadMachineChain(ticket.serial); }
+
+  var isRepairClaim = ticket.repairType==='repair_claim';
+
+  if(isWarranty&&!isTech){
+    document.getElementById('etWarrantyStepper').style.display='block';
+    document.getElementById('etNormalForm').style.display='none';
+    document.getElementById('etRepairClaimStepper').style.display='none';
+    document.getElementById('etModalTitle').textContent='🛡 ดำเนินการเคลมประกัน';
+    renderWarrantyStepper(ticket);
+  } else if(isRepairClaim){
+    document.getElementById('etWarrantyStepper').style.display='none';
+    document.getElementById('etNormalForm').style.display='none';
+    document.getElementById('etRepairClaimStepper').style.display='block';
+    document.getElementById('etModalTitle').textContent='🔄 ซ่อมเครื่อง Claim';
+    // load technician list for step 2
+    loadTechnicianList(function(){ renderRepairClaimStepper(ticket); });
+  } else {
+    document.getElementById('etWarrantyStepper').style.display='none';
+    document.getElementById('etNormalForm').style.display='block';
+    document.getElementById('etRepairClaimStepper').style.display='none';
+    document.getElementById('etModalTitle').textContent='🎫 อัปเดต Ticket';
+    document.getElementById('et_status_normal').value=ticket.status||'รับเรื่องแล้ว';
+    document.getElementById('et_assigned').value=ticket.assignedTo||'';
+    document.getElementById('et_assigned').disabled=isTech;
+    document.getElementById('et_staffnote').value=ticket.staffNote||'';
+    document.getElementById('et_technote').value=ticket.techNote||'';
+  }
+  document.getElementById('editTicketModal').classList.add('open');
+}
+
+function loadTechnicianList(callback) {
+  if(window._technicianList){ if(callback)callback(); return; }
+  var cbName='techCb_'+Date.now(), s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.result==='success'){
+      window._technicianList = res.data.filter(function(u){return u.role==='technician'||u.role==='staff'||u.role==='admin';});
+    }
+    if(callback)callback();
+  };
+  s.onerror=function(){delete window[cbName];if(callback)callback();};
+  s.src=SHEETS_URL+'?action=getUsers&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function loadMachineChain(serial){
+  var cbName='chainCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    var el=document.getElementById('etMachineChain');if(!el)return;
+    if(res&&res.result==='success'&&res.data&&res.data.length){
+      var ms=res.data,parts=[];
+      ms.forEach(function(m){parts.push('<strong>'+m.serial+'</strong>');if(m.newSerial)parts.push('<strong>'+m.newSerial+'</strong> 📦');});
+      el.innerHTML=parts.join(' → ')+'<br><span style="color:#15803d">รวม <strong>'+(ms.length+ms.filter(function(m){return m.newSerial;}).length)+'</strong> เครื่อง</span>';
+      var last=ms[ms.length-1];
+      if(last&&last.newSerial)window._editingTicket._pendingNewSerial=last.newSerial;
+    } else { el.innerHTML='เครื่อง <strong>'+serial+'</strong> — ยังไม่มีประวัติการเคลมก่อนหน้า'; }
+  };
+  s.onerror=function(){delete window[cbName];};
+  s.src=SHEETS_URL+'?action=getMachineChain&serial='+encodeURIComponent(serial)+'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function onTicketStatusChange(){}
+function _updateWarrantyAdminBoxes(){}
+
+// Video upload สำหรับ Repair Claim step 4
+window._rcVideoUploaded = null; // { url, filename }
+
+function handleRcVideoFile(input) {
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  if(file.size>100*1024*1024){ alert('ไฟล์วิดีโอใหญ่เกิน 100MB กรุณาบีบอัดก่อน'); input.value=''; return; }
+  var progWrap=document.getElementById('rcVideoProgressWrap');
+  var progText=document.getElementById('rcVideoProgressText');
+  var progBar=document.getElementById('rcVideoProgressBar');
+  var statusEl=document.getElementById('rcVideoStatus');
+  var area=document.getElementById('rcVideoUploadArea');
+  window._rcVideoUploaded=null;
+  progWrap.style.display='block'; statusEl.style.display='none';
+  progText.textContent='⏳ กำลังโหลดไฟล์ '+file.name+'...';
+  progBar.style.width='10%';
+
+  var reader=new FileReader();
+  reader.onprogress=function(e){ if(e.lengthComputable){ progBar.style.width=Math.round(e.loaded/e.total*70)+'%'; } };
+  reader.onload=function(e){
+    progBar.style.width='80%';
+    progText.textContent='⏳ กำลังอัปโหลดไปยัง Drive...';
+    var ticket=window._editingTicket||{ticketId:'RC'};
+    var ext=(file.name.split('.').pop()||'mp4').toLowerCase();
+    var rcSerial=(ticket.serial||'').toUpperCase();
+    var filename=rcSerial?'VDO_REPAIR_SN_'+rcSerial+'.'+ext:'VDO_REPAIR_'+ticket.ticketId+'.'+ext;
+    var mimetype=e.target.result.split(';')[0].split(':')[1]||'video/mp4';
+    fetch(SHEETS_URL,{
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'uploadVideo',filename:filename,mimetype:mimetype,data:e.target.result})
+    }).finally(function(){
+      progBar.style.width='100%';
+      // ดึง direct URL ผ่าน JSONP
+      var cbName2='rcVdoUrlCb_'+Date.now(), s2=document.createElement('script');
+      window[cbName2]=function(res2){
+        delete window[cbName2]; if(document.body.contains(s2))document.body.removeChild(s2);
+        var directUrl=(res2&&res2.directUrl)?res2.directUrl:DRIVE_VIDEO_URL;
+        window._rcVideoUploaded={url:directUrl,filename:filename};
+        progText.textContent='✅ อัปโหลดสำเร็จ: '+filename;
+        statusEl.style.display='block'; statusEl.style.color='var(--green)'; statusEl.textContent='✅ '+filename;
+        if(area) area.style.borderColor='var(--green)';
+      };
+      s2.onerror=function(){
+        delete window[cbName2];
+        window._rcVideoUploaded={url:DRIVE_VIDEO_URL,filename:filename};
+        progText.textContent='✅ อัปโหลดสำเร็จ: '+filename;
+        statusEl.style.display='block'; statusEl.style.color='var(--green)'; statusEl.textContent='✅ '+filename;
+        if(area) area.style.borderColor='var(--green)';
+      };
+      s2.src=SHEETS_URL+'?action=getFileUrl&filename='+encodeURIComponent(filename)+'&folder=video&callback='+cbName2+'&t='+Date.now();
+      document.body.appendChild(s2);
+    });
+  };
+  reader.onerror=function(){
+    progWrap.style.display='none';
+    statusEl.style.display='block';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='⚠ โหลดไฟล์ไม่สำเร็จ';
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveRepairClaimStep(targetStatus, isBack){
+  var ticket = window._editingTicket; if(!ticket)return;
+  var changedBy = _currentUser?_currentUser.name:'unknown';
+  var staffNote = (document.getElementById('et_staffnote')||{value:''}).value.trim();
+  var assignedTo = ticket.assignedTo || '';
+  var techNote = ticket.techNote || '';
+  var extraFields = {};
+
+  if(!isBack){
+    // validate current step only when going forward
+    var currentStep = REPAIR_CLAIM_FLOW.find(function(s){return s.status===ticket.status;});
+    if(currentStep&&currentStep.validate){var err=currentStep.validate();if(err){alert(err);return;}}
+    // collect fields
+    if(document.getElementById('rc_assigned')) assignedTo=document.getElementById('rc_assigned').value;
+    if(document.getElementById('rc_scheduledate')||document.getElementById('rc_duedate')){
+      var sd=(document.getElementById('rc_scheduledate')||{value:''}).value;
+      var dd=(document.getElementById('rc_duedate')||{value:''}).value;
+      if(sd||dd) staffNote=(staffNote?staffNote+' | ':'')+'วันนัดซ่อม: '+sd+' คาดเสร็จ: '+dd;
+    }
+    if(document.getElementById('rc_techresult')) techNote=document.getElementById('rc_techresult').value.trim();
+    // ใช้ video ที่ upload แล้ว
+    if(window._rcVideoUploaded) extraFields.videoProof=window._rcVideoUploaded.url;
+    if(window._rcVideoUploaded) extraFields.videoFilename=window._rcVideoUploaded.filename;
+  }
+
+  var btn = document.getElementById('etRcNextBtn');
+  if(btn){btn.disabled=true;}
+
+  var cbName='rcCb_'+Date.now(), s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(btn)btn.disabled=false;
+    if(targetStatus==='ปิด Ticket'&&!isBack){
+      markMachineAsClaimFixed(ticket.serial, ticket.ticketId, changedBy);
+      // ปิด ticket → ปิด modal แล้ว refresh
+      closeModal('editTicketModal'); loadTickets();
+    } else {
+      // อัปเดต status ใน memory แล้ว re-render stepper โดยไม่ปิด modal
+      ticket.status = targetStatus;
+      if(assignedTo) ticket.assignedTo = assignedTo;
+      if(techNote) ticket.techNote = techNote;
+      if(staffNote) ticket.staffNote = staffNote;
+      // อัปเดตใน _ticketData ด้วย
+      var idx = _ticketData.findIndex(function(t){return t.ticketId===ticket.ticketId;});
+      if(idx>=0) _ticketData[idx] = ticket;
+      // re-render stepper ต่อเนื่อง
+      loadTechnicianList(function(){ renderRepairClaimStepper(ticket); });
+    }
+  };
+  s.onerror=function(){delete window[cbName];if(btn)btn.disabled=false;closeModal('editTicketModal');loadTickets();};
+  s.src=SHEETS_URL+'?action=updateTicket&ticketId='+encodeURIComponent(ticket.ticketId)
+    +'&status='+encodeURIComponent(targetStatus)
+    +'&assignedTo='+encodeURIComponent(assignedTo)
+    +'&staffNote='+encodeURIComponent(staffNote)
+    +'&techNote='+encodeURIComponent(techNote)
+    +'&videoProof='+encodeURIComponent(extraFields.videoProof||'')
+    +'&videoFilename='+encodeURIComponent(extraFields.videoFilename||'')
+    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+  // reset upload state when going to next step
+  window._rcVideoUploaded = null;
+}
+
+function saveTicketEdit(){
+  var ticket=window._editingTicket;if(!ticket)return;
+  var isWarranty=ticket.repairType==='warranty';
+  var isRepairClaim=ticket.repairType==='repair_claim';
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+  var status='',assignedTo='',staffNote='',techNote='',approvedBy='',trackingLink='',newSerial='';
+  var warrantyCase=ticket.warrantyCase||'';
+  var extraFields={};
+
+  if(isRepairClaim){
+    var nextBtn=document.getElementById('etRcNextBtn');
+    var targetStatus=nextBtn.dataset.nextstatus||ticket.status;
+    saveRepairClaimStep(targetStatus, false);
+    return;
+  }
+
+  if(isWarranty&&_currentUser&&_currentUser.role!=='technician'){
+    var nextBtn=document.getElementById('etNextBtn');
+    status=nextBtn.dataset.nextstatus||ticket.status;
+    staffNote=(document.getElementById('et_staffnote')||{value:''}).value.trim();
+    var activeFlow=getActiveFlow(ticket);
+    var currentStatus=ticket.status||'ตรวจสอบสิทธิ์ประกัน';
+    var currentStep=activeFlow.find(function(s){return s.status===currentStatus;});
+    if(currentStep&&currentStep.validate){var err=currentStep.validate();if(err){alert(err);return;}}
+    if(document.getElementById('step_approvedby'))approvedBy=document.getElementById('step_approvedby').value.trim();
+    if(document.getElementById('step_newserial'))newSerial=document.getElementById('step_newserial').value.trim().toUpperCase();
+    if(document.getElementById('step_tracking'))trackingLink=document.getElementById('step_tracking').value.trim();
+    if(document.getElementById('step_returndate')||document.getElementById('step_returnmethod')){
+      var rd=(document.getElementById('step_returndate')||{value:''}).value.trim();
+      var rm=(document.getElementById('step_returnmethod')||{value:''}).value.trim();
+      if(rd||rm) staffNote=(staffNote?staffNote+' | ':'')+'รับเครื่อง: '+rd+' วิธี: '+rm;
+    }
+    if(ticket.status==='ปิด Ticket'){closeModal('editTicketModal');return;}
+  } else if(!isRepairClaim){
+    status=(document.getElementById('et_status_normal')||{value:ticket.status}).value;
+    assignedTo=(document.getElementById('et_assigned')||{value:''}).value;
+    staffNote=(document.getElementById('et_staffnote')||{value:''}).value.trim();
+    techNote=(document.getElementById('et_technote')||{value:''}).value.trim();
+  }
+
+  var btn=isWarranty?document.getElementById('etNextBtn'):document.querySelector('#etNormalForm .modal-confirm');
+  if(btn){btn.textContent='⏳ กำลังบันทึก...';btn.disabled=true;}
+
+  var cbName='teCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(btn){btn.disabled=false;}
+
+    // อัปเดต status ใน memory
+    ticket.status=status;
+    if(approvedBy) ticket.approvedBy=approvedBy;
+    if(trackingLink) ticket.trackingLink=trackingLink;
+    if(staffNote) ticket.staffNote=staffNote;
+    var idx=_ticketData.findIndex(function(t){return t.ticketId===ticket.ticketId;});
+    if(idx>=0) _ticketData[idx]=ticket;
+
+    if(newSerial&&ticket.repairType==='warranty'){
+      // สร้างประกันให้เครื่องใหม่ → ปิด modal หลังเสร็จ
+      createReplacementWarranty(ticket,newSerial,changedBy,function(){
+        ticket._pendingNewSerial=newSerial;
+        renderWarrantyStepper(ticket);
+      });
+    } else if(status==='ปิด Ticket'){
+      // ปิด Ticket → auto-create repair claim ถ้า case 2 แล้วปิด modal
+      if(warrantyCase==='2'||warrantyCase===2||(ticket.warrantyCase==='2'))
+        autoCreateRepairClaimTicket(ticket,changedBy);
+      closeModal('editTicketModal'); loadTickets();
+    } else {
+      // ขั้นอื่นๆ → re-render stepper ไม่ปิด modal
+      renderWarrantyStepper(ticket);
+    }
+  };
+  s.onerror=function(){delete window[cbName];if(btn)btn.disabled=false;closeModal('editTicketModal');loadTickets();};
+  s.src=SHEETS_URL+'?action=updateTicket&ticketId='+encodeURIComponent(ticket.ticketId)
+    +'&status='+encodeURIComponent(status)+'&assignedTo='+encodeURIComponent(assignedTo)
+    +'&staffNote='+encodeURIComponent(staffNote)+'&techNote='+encodeURIComponent(techNote)
+    +'&approvedBy='+encodeURIComponent(approvedBy)+'&trackingLink='+encodeURIComponent(trackingLink)
+    +'&warrantyCase='+encodeURIComponent(warrantyCase)
+    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function markMachineAsClaimFixed(serial, ticketId, changedBy){
+  if(!serial) return;
+  var machine=_machineData.find(function(m){
+    return (m.serial||'').toLowerCase()===serial.toLowerCase()
+      ||(m.newSerial||'').toLowerCase()===serial.toLowerCase();
+  });
+  var now=new Date().toISOString();
+  if(machine){
+    // อัปเดต existing record
+    var cbName='cfCb_'+Date.now(),s=document.createElement('script');
+    window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);};
+    s.onerror=function(){delete window[cbName];};
+    s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(machine.id)
+      +'&status=claim_fixed&assetType=claim_fixed&subscriptionSource=from_claim'
+      +'&delpw=adminaccessonly&updatedAt='+encodeURIComponent(now)
+      +'&changedBy='+encodeURIComponent(changedBy)
+      +'&callback='+cbName+'&t='+Date.now();
+    document.body.appendChild(s);
+  } else {
+    // ไม่มี record → สร้างใหม่
+    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({
+      action:'addMachine',
+      id:String(Date.now()),
+      serial:serial,
+      product:'',
+      assetType:'claim_fixed',
+      status:'claim_fixed',
+      subscriptionSource:'from_claim',
+      notes:'ซ่อมเสร็จ (RC Ticket: '+ticketId+')',
+      updatedAt:now,
+      source:'repair_claim_closed'
+    })});
+  }
+}
+
+// Backward compat alias
+function markMachineAsSubscription(serial, changedBy){
+  markMachineAsClaimFixed(serial,'',changedBy);
+}
+
+
+function autoCreateRepairClaimTicket(ticket, changedBy){
+  // สร้าง repair_claim ticket อัตโนมัติ
+  var repairTicketId='RC-'+ticket.ticketId.replace('TK-','');
+  fetch(SHEETS_URL,{
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({
+      action:'createTicket',
+      ticketId:repairTicketId,
+      createdAt:new Date().toISOString(),
+      serial:ticket.serial,
+      name:ticket.name,
+      phone:ticket.phone||'',
+      email:ticket.email||'',
+      lineId:ticket.lineId||'',
+      issueType:'ซ่อมเครื่องเก่าหลังเคลม (อ้างอิง: '+ticket.ticketId+')',
+      description:'สร้างอัตโนมัติจาก warranty claim ticket: '+ticket.ticketId,
+      logUrl:'',
+      repairType:'repair_claim',
+      videoFilename:'', videoUrl:'',
+      status:'รับเรื่องแล้ว'
+    })
+  }).catch(function(){});
+}
+
+function createReplacementWarranty(ticket, newSerial, changedBy, callback){
+  const statusEl=document.getElementById('etNewSerialStatus');
+  statusEl.style.display='block';
+  statusEl.style.color='var(--muted)';
+  statusEl.textContent='⏳ กำลังสร้างประกันให้ S/N '+newSerial+'...';
+
+  const cbName='replCb_'+Date.now(), s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.result==='success'){
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ สร้างประกัน S/N '+newSerial+' เรียบร้อย (ใช้วันหมดประกันเดิม)';
+    } else {
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='⚠ '+(res.message||'สร้างประกันไม่สำเร็จ');
+    }
+    setTimeout(callback, 800);
+  };
+  s.onerror=function(){delete window[cbName];callback();};
+  s.src=SHEETS_URL+'?action=createReplacementWarranty'
+    +'&originalSerial='+encodeURIComponent(ticket.serial)
+    +'&newSerial='+encodeURIComponent(newSerial)
+    +'&ticketId='+encodeURIComponent(ticket.ticketId)
+    +'&changedBy='+encodeURIComponent(changedBy)
+    +'&delpw=adminaccessonly'
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+// ══ TICKET ANALYSIS ══
+function openTicketAnalysis(){
+  document.getElementById('ticketAnalysisModal').classList.add('open');
+  setAnalysisRange('month', document.getElementById('anRange_month'));
+  renderAnalysis();
+}
+
+function setAnalysisRange(range, btn){
+  document.querySelectorAll('#ticketAnalysisModal .filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  var now=new Date(), from=new Date();
+  if(range==='month'){ from=new Date(now.getFullYear(),now.getMonth(),1); }
+  else if(range==='3m'){ from=new Date(now.getFullYear(),now.getMonth()-2,1); }
+  else if(range==='year'){ from=new Date(now.getFullYear(),0,1); }
+  else if(range==='all'){ from=new Date('2020-01-01'); }
+  document.getElementById('an_from').value=from.toISOString().slice(0,10);
+  document.getElementById('an_to').value=now.toISOString().slice(0,10);
+}
+
+function renderAnalysis(){
+  var from=new Date(document.getElementById('an_from').value+'T00:00:00');
+  var to=new Date(document.getElementById('an_to').value+'T23:59:59');
+  var data=_ticketData.filter(function(d){
+    var dt=new Date(d.createdAt||d.registeredAt||0);
+    return dt>=from && dt<=to;
+  });
+
+  var total=data.length;
+  var warrantyC=data.filter(function(d){return d.repairType==='warranty';}).length;
+  var normalC=data.filter(function(d){return d.repairType==='normal'||!d.repairType;}).length;
+  var repairC=data.filter(function(d){return d.repairType==='repair_claim';}).length;
+  var closedC=data.filter(function(d){return d.status==='ปิด Ticket';}).length;
+  var openC=data.filter(function(d){return d.status!=='ปิด Ticket';}).length;
+
+  // Incoming (ยังไม่รับ) vs On-going vs Closed
+  var incomingStatuses=['ตรวจสอบสิทธิ์ประกัน','รับเรื่องแล้ว'];
+  var incomingC=data.filter(function(d){return incomingStatuses.indexOf(d.status)>=0;}).length;
+  var ongoingC=data.filter(function(d){return incomingStatuses.indexOf(d.status)<0&&d.status!=='ปิด Ticket';}).length;
+
+  // Issue type breakdown
+  var issueMap={};
+  data.forEach(function(d){
+    var k=d.issueType||'ไม่ระบุ';
+    // shorten long issueType (RC tickets)
+    if(k.length>20) k=k.slice(0,20)+'...';
+    issueMap[k]=(issueMap[k]||0)+1;
+  });
+  var issueSorted=Object.keys(issueMap).sort(function(a,b){return issueMap[b]-issueMap[a];}).slice(0,8);
+
+  // Overdue: on-going tickets older than 7 days
+  var now=new Date();
+  var overdue=data.filter(function(d){
+    if(d.status==='ปิด Ticket') return false;
+    if(incomingStatuses.indexOf(d.status)>=0) return false;
+    var dt=new Date(d.createdAt||0);
+    return (now-dt)>7*864e5;
+  });
+  var slowWarning=data.filter(function(d){
+    if(d.status==='ปิด Ticket') return false;
+    var dt=new Date(d.createdAt||0);
+    return (now-dt)>3*864e5 && (now-dt)<=7*864e5;
+  });
+
+  // Render
+  var maxIssue=issueSorted.length?issueMap[issueSorted[0]]:1;
+  var issueChart=issueSorted.map(function(k){
+    var pct=Math.round(issueMap[k]/maxIssue*100);
+    return '<div style="margin-bottom:8px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">'
+      +'<span>'+k+'</span><strong>'+issueMap[k]+'</strong></div>'
+      +'<div style="height:8px;background:var(--border);border-radius:4px">'
+      +'<div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:4px;transition:width .4s"></div>'
+      +'</div></div>';
+  }).join('');
+
+  var overdueRows=overdue.map(function(d){
+    var days=Math.floor((now-new Date(d.createdAt||0))/864e5);
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div><span style="font-family:monospace;font-size:12px;font-weight:600">'+d.ticketId+'</span> · '+d.name+'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<span style="font-size:11px;color:var(--muted)">'+d.status+'</span>'
+      +'<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+days+' วัน</span>'
+      +'</div></div>';
+  }).join('');
+
+  var html='';
+
+  // Summary row
+  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+    +statCard('ทั้งหมด',total,'var(--text)')
+    +statCard('ยังไม่รับ',incomingC,'#f59e0b')
+    +statCard('กำลังดำเนินการ',ongoingC,'#3b82f6')
+    +statCard('ปิดแล้ว',closedC,'#10b981')
+    +'</div>';
+
+  // Type breakdown
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'
+    +statCard('🛡 ในประกัน',warrantyC,'#7c3aed')
+    +statCard('🔧 ซ่อมปกติ',normalC,'#f59e0b')
+    +statCard('🔄 ซ่อม Claim',repairC,'#06b6d4')
+    +'</div>';
+
+  // Issue breakdown
+  if(issueSorted.length){
+    html+='<div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">📋 ประเภทปัญหาที่พบบ่อย</div>'
+      +issueChart+'</div>';
+  }
+
+  // Overdue warning
+  if(slowWarning.length||overdue.length){
+    html+='<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:16px;margin-bottom:12px">'
+      +'<div style="font-size:12px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">'
+      +'⚠ เคสที่ควรเร่งดำเนินการ'
+      +(overdue.length?' · '+overdue.length+' เคสเกิน 7 วัน':'')
+      +(slowWarning.length?' · '+slowWarning.length+' เคสเกิน 3 วัน':'')
+      +'</div>'
+      +overdueRows
+      +'</div>';
+  } else if(total>0){
+    html+='<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:#15803d">✅ ไม่มีเคสที่ค้างนานผิดปกติ</div>';
+  }
+
+  if(!total){
+    html='<div style="text-align:center;padding:40px;color:var(--muted)">🔍 ไม่มีข้อมูลในช่วงเวลานี้</div>';
+  }
+
+  document.getElementById('analysisContent').innerHTML=html;
+}
+
+function statCard(label, value, color){
+  return '<div style="background:var(--card);border-radius:12px;padding:14px">'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+label+'</div>'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:28px;font-weight:700;color:'+color+'">'+value+'</div>'
+    +'</div>';
+}
+
+// ── Global Claim Ticket functions ──
+function onGlobalStatusChange(){
+  var v=document.getElementById('gc_status').value;
+  document.getElementById('gcAcceptedFields').style.display=v==='accepted'?'block':'none';
+}
+function onGcNewMachineChange(){
+  var v=document.getElementById('gc_newmachine').value;
+  document.getElementById('gcLotField').style.display=(v==='in_lot'||v==='received')?'block':'none';
+}
+
+function openGlobalClaimUpdate(ticketId){
+  var ticket=_ticketData.find(function(t){return t.ticketId===ticketId;});
+  if(!ticket)return;
+  window._editingGlobalTicket=ticket;
+  document.getElementById('globalClaimTicketInfo').innerHTML=
+    '<strong>'+ticketId+'</strong><br>S/N: <strong>'+(ticket.serial||'—')+'</strong> · '+(ticket.name||'—')+'<br>ปัญหา: '+(ticket.issueType||'—');
+  document.getElementById('gc_status').value=ticket.globalClaimStatus||'pending';
+  document.getElementById('gc_note').value=ticket.globalClaimNote||'';
+  document.getElementById('gc_oldmachine').value=ticket.gcOldMachine||'';
+  document.getElementById('gc_newmachine').value=ticket.gcNewMachine||'';
+  document.getElementById('gc_lot').value=ticket.gcLot||'';
+  onGlobalStatusChange();
+  onGcNewMachineChange();
+  document.getElementById('globalClaimModal').classList.add('open');
+}
+
+function saveGlobalClaimStatus(){
+  var ticket=window._editingGlobalTicket; if(!ticket)return;
+  var status=document.getElementById('gc_status').value;
+  var note=document.getElementById('gc_note').value.trim();
+  var oldMachine=document.getElementById('gc_oldmachine').value;
+  var newMachine=document.getElementById('gc_newmachine').value;
+  var lot=document.getElementById('gc_lot').value.trim();
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+  var btn=document.querySelector('#globalClaimModal .modal-confirm');
+  if(btn){btn.textContent='⏳ กำลังบันทึก...';btn.disabled=true;}
+
+  var cbName='gcCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(btn){btn.textContent='💾 บันทึก';btn.disabled=false;}
+    ticket.globalClaimStatus=status;
+    ticket.globalClaimNote=note;
+    ticket.gcOldMachine=oldMachine;
+    ticket.gcNewMachine=newMachine;
+    ticket.gcLot=lot;
+    var idx=_ticketData.findIndex(function(t){return t.ticketId===ticket.ticketId;});
+    if(idx>=0)_ticketData[idx]=ticket;
+    closeModal('globalClaimModal');
+    renderTickets();
+  };
+  s.onerror=function(){delete window[cbName];if(btn){btn.textContent='💾 บันทึก';btn.disabled=false;}closeModal('globalClaimModal');};
+  s.src=SHEETS_URL+'?action=updateTicket&ticketId='+encodeURIComponent(ticket.ticketId)
+    +'&globalClaimStatus='+encodeURIComponent(status)
+    +'&globalClaimNote='+encodeURIComponent(note)
+    +'&gcOldMachine='+encodeURIComponent(oldMachine)
+    +'&gcNewMachine='+encodeURIComponent(newMachine)
+    +'&gcLot='+encodeURIComponent(lot)
+    +'&delpw=adminaccessonly&changedBy='+encodeURIComponent(changedBy)
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function exportGlobalClaimTickets(){
+  var data=_ticketData.filter(function(d){return d.repairType==='warranty'&&d.status==='ปิด Ticket';});
+  if(!data.length){alert('No closed warranty cases found');return;}
+
+  var headers=[
+    'Ticket ID','Date Opened','Original S/N','Replacement S/N',
+    'Customer Name','Phone','Email','Line ID',
+    'Issue Type','Issue Description','Machine Log URL','VDO Evidence URL',
+    'Approved By','Global Claim Status','Global Note',
+    'Old Machine Disposition','New Machine Status','Lot / PO Number'
+  ];
+
+  var gcStatusMap={pending:'Pending',accepted:'Accepted',rejected:'Rejected'};
+  var oldMachineMap={sent_back:'Returned to Global','kept_th':'Kept in Thailand'};
+  var newMachineMap={in_lot:'Awaiting Lot','received':'Received'};
+
+  var rows=data.map(function(d){
+    var newSN='';
+    var machine=_machineData.find(function(m){return (m.serial||'').toLowerCase()===(d.serial||'').toLowerCase();});
+    if(machine)newSN=machine.newSerial||'';
+
+    return [
+      d.ticketId||'',
+      d.createdAt?new Date(d.createdAt).toLocaleDateString('en-US'):'',
+      d.serial||'',
+      newSN,
+      d.name||'',
+      d.phone||'',
+      d.email||'',
+      d.lineId||'',
+      d.issueType||'',
+      d.description||'',
+      d.logUrl||'',
+      d.videoUrl||(d.videoFilename?DRIVE_VIDEO_URL:''),
+      d.approvedBy||'',
+      gcStatusMap[d.globalClaimStatus||'pending']||'Pending',
+      d.globalClaimNote||'',
+      oldMachineMap[d.gcOldMachine||'']||'',
+      newMachineMap[d.gcNewMachine||'']||'',
+      d.gcLot||''
+    ];
+  });
+
+  dl('\uFEFF'+[headers,...rows].map(function(r){
+    return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');
+  }).join('\n'), 'xBloom_Global_Claim_Report_'+ds()+'.csv','text/csv;charset=utf-8');
+}
+
+// ══ GLOBAL REPORT MODE ══
+function onMcGlobalStatusChange(){
+  document.getElementById('mcAcceptedFields').style.display=
+    document.getElementById('mc_gc_status').value==='accepted'?'block':'none';
+}
+
+function openAddManualCase(){
+  // reset form
+  ['mc_date','mc_ticketid','mc_serial','mc_newserial','mc_name','mc_phone',
+   'mc_email','mc_line','mc_issue','mc_description','mc_log','mc_vdo',
+   'mc_approvedby','mc_gc_note','mc_lot'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.value='';
+  });
+  document.getElementById('mc_date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('mc_gc_status').value='pending';
+  document.getElementById('mc_oldmachine').value='';
+  document.getElementById('mc_newmachine').value='';
+  document.getElementById('mcAcceptedFields').style.display='none';
+  if(_currentUser) document.getElementById('mc_approvedby').value=_currentUser.name;
+  document.getElementById('addManualCaseModal').classList.add('open');
+}
+
+function saveManualCase(){
+  var serial=(document.getElementById('mc_serial').value||'').trim().toUpperCase();
+  var name=(document.getElementById('mc_name').value||'').trim();
+  var phone=(document.getElementById('mc_phone').value||'').trim();
+  var date=document.getElementById('mc_date').value;
+  var issue=(document.getElementById('mc_issue').value||'').trim();
+  if(!serial||!name||!phone||!date||!issue){alert('กรุณากรอกข้อมูลที่มี * ให้ครบ');return;}
+
+  var ticketId=(document.getElementById('mc_ticketid').value||'').trim();
+  if(!ticketId){
+    var d=new Date(date);
+    ticketId='TK-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+String(Date.now()).slice(-4);
+  }
+  var gcStatus=document.getElementById('mc_gc_status').value;
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+
+  var btn=document.querySelector('#addManualCaseModal .modal-confirm');
+  if(btn){btn.textContent='⏳ กำลังบันทึก...';btn.disabled=true;}
+
+  // Step 1: สร้าง ticket
+  var payload={
+    action:'createTicket',
+    ticketId:ticketId,
+    createdAt:new Date(date).toISOString(),
+    serial:serial,
+    name:name,
+    phone:phone,
+    email:(document.getElementById('mc_email').value||'').trim(),
+    lineId:(document.getElementById('mc_line').value||'').trim(),
+    issueType:issue,
+    description:(document.getElementById('mc_description').value||'').trim(),
+    logUrl:(document.getElementById('mc_log').value||'').trim(),
+    videoUrl:(document.getElementById('mc_vdo').value||'').trim(),
+    videoFilename:(document.getElementById('mc_vdo').value?'VDO_manual':''),
+    repairType:'warranty',
+    status:'ปิด Ticket',
+    approvedBy:(document.getElementById('mc_approvedby').value||'').trim(),
+    warrantyCase:'2',
+    globalClaimStatus:gcStatus,
+    globalClaimNote:(document.getElementById('mc_gc_note').value||'').trim(),
+    gcOldMachine:document.getElementById('mc_oldmachine').value,
+    gcNewMachine:document.getElementById('mc_newmachine').value,
+    gcLot:(document.getElementById('mc_lot').value||'').trim()
+  };
+
+  fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
+  .finally(function(){
+    // Step 2: ถ้ามี S/N ใหม่ สร้างประกันด้วย
+    var newSerial=(document.getElementById('mc_newserial').value||'').trim().toUpperCase();
+    var fakeTicket={ticketId:ticketId,serial:serial,name:name,phone:phone,email:'',purchaseDate:'',expiryDate:''};
+    if(newSerial){
+      var cbR='replR_'+Date.now(),sR=document.createElement('script');
+      window[cbR]=function(){delete window[cbR];if(document.body.contains(sR))document.body.removeChild(sR);};
+      sR.src=SHEETS_URL+'?action=createReplacementWarranty&originalSerial='+encodeURIComponent(serial)
+        +'&newSerial='+encodeURIComponent(newSerial)+'&ticketId='+encodeURIComponent(ticketId)
+        +'&changedBy='+encodeURIComponent(changedBy)+'&delpw=adminaccessonly&callback='+cbR+'&t='+Date.now();
+      document.body.appendChild(sR);
+    }
+    if(btn){btn.textContent='💾 บันทึกเคสย้อนหลัง';btn.disabled=false;}
+    closeModal('addManualCaseModal');
+    setTimeout(function(){ loadTickets(); },1500);
+    alert('✅ บันทึกเคสย้อนหลัง "'+ticketId+'" เรียบร้อยแล้ว');
+  });
+}
+
+function copyGlobalLink(){
+  var base=window.location.origin+window.location.pathname;
+  var link=base+'?mode=global&token=xbloom2026global';
+  navigator.clipboard.writeText(link).then(function(){
+    alert('✅ คัดลอก Link แล้ว!\n\n'+link+'\n\nส่ง link นี้ให้ Global ได้เลย');
+  }).catch(function(){
+    prompt('Copy link นี้ส่งให้ Global:', link);
+  });
+}
+
+function initGlobalReportMode(){
+  // ซ่อน UI ปกติทั้งหมด แสดงเฉพาะ report
+  document.body.innerHTML='<div id="globalReport" style="max-width:1100px;margin:0 auto;padding:32px 20px;font-family:\'DM Sans\',sans-serif">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">'
+    +'<div><div style="font-family:\'Playfair Display\',serif;font-size:24px;font-weight:700">xBloom Thailand</div>'
+    +'<div style="font-size:13px;color:#6b7280;margin-top:2px">Warranty Claim Report — For xBloom Global</div></div>'
+    +'<div style="text-align:right;font-size:12px;color:#9ca3af">Generated: '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'
+    +'</div>'
+    +'<div id="grContent" style="text-align:center;padding:40px;color:#9ca3af">⏳ Loading claim data...</div>'
+    +'</div>';
+
+  // ดึงข้อมูล tickets
+  var cbName='grCb_'+Date.now(), s=document.createElement('script');
+  window[cbName]=function(res){
+    delete window[cbName]; if(document.body.contains(s))document.body.removeChild(s);
+    if(!res||res.result!=='success'||!res.data){ document.getElementById('grContent').textContent='Failed to load data.'; return; }
+    renderGlobalReport(res.data.filter(function(d){return d.repairType==='warranty'&&d.status==='ปิด Ticket';}));
+  };
+  s.src=SHEETS_URL+'?action=getAllTickets&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function renderGlobalReport(data){
+  var gcStatusStyle={
+    pending:'background:#fef9c3;color:#92400e',
+    accepted:'background:#d1fae5;color:#065f46',
+    rejected:'background:#fee2e2;color:#991b1b'
+  };
+  var gcStatusLabel={pending:'Pending',accepted:'Accepted',rejected:'Rejected'};
+  var oldMachineLabel={'sent_back':'Returned to Global','kept_th':'Kept in Thailand'};
+  var newMachineLabel={'in_lot':'Awaiting Lot','received':'Received'};
+
+  var summaryPending=data.filter(function(d){return (d.globalClaimStatus||'pending')==='pending';}).length;
+  var summaryAccepted=data.filter(function(d){return d.globalClaimStatus==='accepted';}).length;
+  var summaryRejected=data.filter(function(d){return d.globalClaimStatus==='rejected';}).length;
+
+  var html='';
+
+  // Summary strip
+  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">'
+    +grStatCard('Total Cases',data.length,'#111827')
+    +grStatCard('Pending',summaryPending,'#92400e','#fef9c3')
+    +grStatCard('Accepted',summaryAccepted,'#065f46','#d1fae5')
+    +grStatCard('Rejected',summaryRejected,'#991b1b','#fee2e2')
+    +'</div>';
+
+  if(!data.length){ html+='<p style="text-align:center;color:#9ca3af;padding:40px">No closed warranty cases found.</p>'; document.getElementById('grContent').innerHTML=html; return; }
+
+  // Table
+  html+='<div style="overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Ticket</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Date</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Original S/N</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Customer</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Issue</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Evidence</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Global Status</th>'
+    +'<th style="padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">Machine / Lot</th>'
+    +'</tr></thead><tbody>';
+
+  data.forEach(function(d,idx){
+    var gs=d.globalClaimStatus||'pending';
+    var rowBg=idx%2===0?'#fff':'#f9fafb';
+    var vdoUrl=d.videoUrl||(d.videoFilename?DRIVE_VIDEO_URL:'');
+    html+='<tr style="background:'+rowBg+';border-bottom:1px solid #e5e7eb">'
+      +'<td style="padding:12px 14px;font-family:monospace;font-weight:600;font-size:12px">'+d.ticketId+'</td>'
+      +'<td style="padding:12px 14px;white-space:nowrap;color:#6b7280">'+new Date(d.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;font-size:12px">'+(d.serial||'—')+'</td>'
+      +'<td style="padding:12px 14px"><div style="font-weight:500">'+(d.name||'—')+'</div><div style="font-size:11px;color:#9ca3af">'+(d.phone||'')+'</div></td>'
+      +'<td style="padding:12px 14px;max-width:200px"><div style="font-weight:500;font-size:12px">'+(d.issueType||'—')+'</div>'+(d.description?'<div style="font-size:11px;color:#6b7280;margin-top:2px;max-height:40px;overflow:hidden">'+d.description.slice(0,80)+(d.description.length>80?'...':'')+'</div>':'')+'</td>'
+      +'<td style="padding:12px 14px">'
+        +(d.logUrl?'<a href="'+d.logUrl+'" target="_blank" style="display:block;font-size:12px;color:#3b82f6;margin-bottom:4px">📋 Machine Log</a>':'')
+        +(vdoUrl?'<a href="'+vdoUrl+'" target="_blank" style="display:block;font-size:12px;color:#3b82f6">🎥 Video</a>':'')
+        +(!d.logUrl&&!vdoUrl?'<span style="color:#d1d5db">—</span>':'')
+      +'</td>'
+      +'<td style="padding:12px 14px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;'+(gcStatusStyle[gs]||gcStatusStyle.pending)+'">'+(gcStatusLabel[gs]||'Pending')+'</span>'
+        +(d.globalClaimNote?'<div style="font-size:11px;color:#9ca3af;margin-top:4px">'+d.globalClaimNote+'</div>':'')
+      +'</td>'
+      +'<td style="padding:12px 14px;font-size:12px">'
+        +(d.gcOldMachine?'<div style="color:#6b7280">Old: '+(oldMachineLabel[d.gcOldMachine]||d.gcOldMachine)+'</div>':'')
+        +(d.gcNewMachine?'<div style="color:#059669;font-weight:500">New: '+(newMachineLabel[d.gcNewMachine]||d.gcNewMachine)+(d.gcLot?' ('+d.gcLot+')':'')+'</div>':'')
+        +(!d.gcOldMachine&&!d.gcNewMachine?'<span style="color:#d1d5db">—</span>':'')
+      +'</td>'
+      +'</tr>';
+  });
+
+  html+='</tbody></table></div>'
+    +'<div style="margin-top:16px;font-size:11px;color:#9ca3af;text-align:center">xBloom Thailand · Confidential · For Internal Use by xBloom Global Only</div>';
+
+  document.getElementById('grContent').innerHTML=html;
+}
+
+function grStatCard(label,value,color,bg){
+  return '<div style="background:'+(bg||'#f9fafb')+';border:1px solid #e5e7eb;border-radius:10px;padding:16px">'
+    +'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">'+label+'</div>'
+    +'<div style="font-size:28px;font-weight:700;color:'+(color||'#111827')+'">'+value+'</div>'
+    +'</div>';
+}
+
 function exportTicketCSV(){
   const data=_ticketData; if(!data.length){alert('ไม่มีข้อมูล');return;}
   const headers=['Ticket ID','วันที่เปิด','S/N','ชื่อลูกค้า','โทร','อีเมล','ประเภทปัญหา','รายละเอียด','สถานะ','มอบหมาย','หมายเหตุ Staff','หมายเหตุช่าง'];
@@ -1674,11 +3767,18 @@ function confirmDeleteTicket(){
 }
 
 // ══ ADMIN: MACHINES ══
-let _machineData=[], _machineTextFilter='';
+// ══ ASSET REGISTRY (Machine Tracker) ══
+let _machineData=[], _machineTextFilter='', _assetTab='all', _subscriptionFilter='all';
+
+const ASSET_TYPE_LABEL={'store':'🏪 Store Asset','claim_fixed':'🔧 Claim & Fixed','subscription':'♻️ Subscription'};
+const ASSET_TYPE_COLOR={'store':'#7c3aed','claim_fixed':'#d97706','subscription':'#059669'};
+const ASSET_TYPE_BG={'store':'#f5f3ff','claim_fixed':'#fffbeb','subscription':'#f0fdf4'};
+const SUB_SOURCE_LABEL={'from_claim':'จาก Claim','new':'New','other':'อื่นๆ'};
+
 function loadMachines(){
   document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
-  const cbName='mAdminCb_'+Date.now(),s=document.createElement('script'),done={v:false};
-  const timer=setTimeout(()=>{if(done.v)return;done.v=true;delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⚠ หมดเวลา <button onclick="loadMachines()" style="margin-left:8px;padding:4px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer">ลองใหม่</button></div></td></tr>';},20000);
+  var cbName='mAdminCb_'+Date.now(),s=document.createElement('script'),done={v:false};
+  var timer=setTimeout(function(){if(done.v)return;done.v=true;delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⚠ หมดเวลา <button onclick="loadMachines()" style="margin-left:8px;padding:4px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer">ลองใหม่</button></div></td></tr>';},20000);
   window[cbName]=function(res){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
     if(res&&res.result==='success'&&Array.isArray(res.data)){_machineData=res.data;renderMachines();}
     else{document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
@@ -1687,57 +3787,305 @@ function loadMachines(){
   s.src=SHEETS_URL+'?action=getAllMachines&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
+
 function filterMachines(q){_machineTextFilter=q.toLowerCase();renderMachines();}
-const MACHINE_STATUS_LABEL={claimed:'เคลมแล้ว',pending_repair:'รอซ่อม',repaired:'ซ่อมแล้ว',subscription:'Subscription'};
-const MACHINE_STATUS_BADGE={claimed:'badge-orange',pending_repair:'badge-blue',repaired:'badge-green',subscription:'badge-black'};
+
+function setAssetTab(tab,btn){
+  _assetTab=tab; _subscriptionFilter='all';
+  ['all','store','claim_fixed','subscription'].forEach(function(t){
+    var b=document.getElementById('assetTab_'+t);if(!b)return;
+    var on=t===tab;
+    b.style.borderColor=on?'var(--accent)':'var(--border)';
+    b.style.background=on?'var(--accent)':'var(--card)';
+    b.style.color=on?'#fff':'var(--text)';
+  });
+  // Show/hide subscription sub-filter
+  var subFilter=document.getElementById('subscriptionSubFilter');
+  if(subFilter)subFilter.style.display=tab==='subscription'?'block':'none';
+  // Show/hide global banner
+  var banner=document.getElementById('globalClaimBanner');
+  if(banner)banner.style.display=tab==='all'||tab==='claim_fixed'?'flex':'none';
+  // reset sub filter pills
+  ['all','from_claim','new'].forEach(function(k){
+    var b=document.getElementById('subAsset_'+k);if(b)b.classList.remove('active');
+  });
+  var first=document.getElementById('subAsset_all');if(first)first.classList.add('active');
+  renderMachines();
+}
+
+function setSubscriptionFilter(f,btn){
+  _subscriptionFilter=f;
+  ['all','from_claim','new'].forEach(function(k){
+    var b=document.getElementById('subAsset_'+k);if(b)b.classList.remove('active');
+  });
+  if(btn)btn.classList.add('active');
+  renderMachines();
+}
+
+function parseDateFlexible(str){
+  if(!str)return null;
+  str=String(str).trim();
+  // DD/MM/YYYY or DD/MM/YY
+  var m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m){
+    var y=parseInt(m[3]); if(y<100)y+=2000;
+    return new Date(y,parseInt(m[2])-1,parseInt(m[1]));
+  }
+  // YYYY-MM-DD
+  var d=new Date(str);
+  return isNaN(d.getTime())?null:d;
+}
+
+function calcWarrantyPct(start,end){
+  if(!start||!end)return null;
+  var s=parseDateFlexible(start),e=parseDateFlexible(end),now=new Date();
+  if(!s||!e)return null;
+  var total=e-s; if(total<=0)return null;
+  var used=Math.min(now-s,total);
+  return Math.max(0,Math.min(100,Math.round(used/total*100)));
+}
+
+function warrantyBar(pct){
+  if(pct===null)return '<span style="color:var(--muted);font-size:11px">—</span>';
+  var color=pct>=80?'#dc2626':pct>=50?'#f59e0b':'#10b981';
+  return '<div style="font-size:11px;color:var(--muted);margin-bottom:2px">'+pct+'% ใช้ไปแล้ว</div>'
+    +'<div style="height:6px;background:var(--border);border-radius:3px;width:100%">'
+    +'<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px;transition:width .4s"></div></div>';
+}
+
 function renderMachines(){
-  let data=_machineData;
-  if(_machineTextFilter)data=data.filter(d=>(d.serial||'').toLowerCase().includes(_machineTextFilter)||(d.newSerial||'').toLowerCase().includes(_machineTextFilter)||(d.customerName||'').toLowerCase().includes(_machineTextFilter));
-  const statusCounts={claimed:0,pending_repair:0,repaired:0,subscription:0};
-  _machineData.forEach(d=>{if(statusCounts[d.status]!==undefined)statusCounts[d.status]++;});
-  document.getElementById('machineStats').innerHTML=`<div class="stat-card"><div class="stat-num">${_machineData.length}</div><div class="stat-label">เครื่องทั้งหมด</div></div><div class="stat-card"><div class="stat-num">${statusCounts.claimed}</div><div class="stat-label">เคลมแล้ว</div></div><div class="stat-card"><div class="stat-num">${statusCounts.pending_repair}</div><div class="stat-label">รอซ่อม</div></div><div class="stat-card"><div class="stat-num">${statusCounts.repaired}</div><div class="stat-label">ซ่อมแล้ว</div></div><div class="stat-card"><div class="stat-num">${statusCounts.subscription}</div><div class="stat-label">Subscription</div></div>`;
-  if(!data.length){document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">ไม่มีข้อมูล</div></td></tr>';return;}
-  document.getElementById('machineTableBody').innerHTML=data.map((d,i)=>{
-    const badgeClass=MACHINE_STATUS_BADGE[d.status]||'badge-gray';
-    const statusLabel=MACHINE_STATUS_LABEL[d.status]||d.status||'—';
-    return '<tr id="mrow_'+d.id+'">'
+  var data=_machineData;
+
+  // Asset tab filter
+  if(_assetTab!=='all') data=data.filter(function(d){return (d.assetType||d.status||'')===_assetTab;});
+  if(_assetTab==='subscription'&&_subscriptionFilter!=='all')
+    data=data.filter(function(d){return (d.subscriptionSource||'')===_subscriptionFilter;});
+
+  // Text filter
+  if(_machineTextFilter)data=data.filter(function(d){
+    return (d.serial||'').toLowerCase().includes(_machineTextFilter)
+      ||(d.customerName||d.location||'').toLowerCase().includes(_machineTextFilter)
+      ||(d.product||'').toLowerCase().includes(_machineTextFilter);
+  });
+
+  // Counts
+  var counts={all:_machineData.length,store:0,claim_fixed:0,subscription:0};
+  _machineData.forEach(function(d){
+    var t=d.assetType||d.status||'';
+    if(counts[t]!==undefined)counts[t]++;
+  });
+  ['all','store','claim_fixed','subscription'].forEach(function(t){
+    var el=document.getElementById('assetCount_'+t);
+    if(el)el.textContent=counts[t]!==undefined?counts[t]:'—';
+  });
+
+  // Global claim counts (claim_fixed only)
+  var claimedData=_machineData.filter(function(d){return (d.source||'').includes('warranty_claim')||d.status==='claimed'||d.assetType==='claim_fixed';});
+  var globalPending=claimedData.filter(function(d){return (d.globalStatus||'pending')==='pending';}).length;
+  var globalSent=claimedData.filter(function(d){return d.globalStatus==='sent';}).length;
+  var pc=document.getElementById('globalPendingCount'),sc=document.getElementById('globalSentCount');
+  if(pc)pc.textContent=globalPending;if(sc)sc.textContent=globalSent;
+
+  if(!data.length){document.getElementById('machineTableBody').innerHTML='<tr><td colspan="9"><div class="empty-state">ไม่มีข้อมูลในกลุ่มนี้</div></td></tr>';return;}
+
+  document.getElementById('machineTableBody').innerHTML=data.map(function(d,i){
+    var assetType=d.assetType||d.status||'';
+    var assetLabel=ASSET_TYPE_LABEL[assetType]||assetType||'—';
+    var assetColor=ASSET_TYPE_COLOR[assetType]||'var(--muted)';
+    var assetBg=ASSET_TYPE_BG[assetType]||'var(--bg)';
+
+    // Sub-source for all types
+    var subSrc=d.subscriptionSource
+      ?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(SUB_SOURCE_LABEL[d.subscriptionSource]||d.subscriptionSource)+'</div>':'';
+
+    // Warranty %
+    var pct=calcWarrantyPct(d.warrantyStart||d.purchaseDate,d.warrantyEnd||d.expiryDate);
+    var wBar=warrantyBar(pct);
+
+    // Global claim badge (claim_fixed or legacy claimed)
+    var isGlobalClaim=(d.source||'').includes('warranty_claim')||d.status==='claimed'||assetType==='claim_fixed';
+    var gs=d.globalStatus||'pending';
+    var globalBadge=isGlobalClaim
+      ?(gs==='sent'
+        ?'<span class="badge badge-green" style="font-size:10px">✅ ส่ง Global แล้ว</span>'
+        :'<button class="edit-btn" style="font-size:10px" onclick="markGlobalSent(this.dataset.id)" data-id="'+d.id+'">ส่ง Global</button>')
+      :'';
+
+    return '<tr>'
       +'<td>'+(i+1)+'</td>'
-      +'<td style="font-family:monospace;font-size:12px;font-weight:600">'+(d.serial||'—')+'</td>'
-      +'<td style="font-family:monospace;font-size:12px">'+(d.newSerial||'<span style="color:var(--muted)">—</span>')+'</td>'
-      +'<td>'+(d.product||'—')+'</td>'
-      +'<td>'+(d.customerName||'<span style="color:var(--muted)">—</span>')+'</td>'
-      +'<td><span class="badge '+badgeClass+'">'+statusLabel+'</span></td>'
-      +'<td style="font-size:12px;max-width:180px">'+(d.notes||'<span style="color:var(--muted)">—</span>')+'</td>'
+      +'<td style="font-family:monospace;font-size:13px;font-weight:700">'+(d.serial||'—')+'</td>'
+      +'<td style="font-size:12px">'+(d.product||'—')+'</td>'
+      +'<td><div style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:'+assetBg+';color:'+assetColor+'">'+assetLabel+'</div>'+subSrc+globalBadge+'</td>'
+      +'<td style="font-size:12px">'+(d.customerName||d.location||'<span style="color:var(--muted)">—</span>')+'</td>'
+      +'<td style="min-width:120px">'+wBar+'</td>'
+      +'<td style="font-size:12px;max-width:160px">'+(d.notes||'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="font-size:12px;white-space:nowrap">'+(d.updatedAt?new Date(d.updatedAt).toLocaleDateString('th-TH'):'—')+'</td>'
-      +'<td><button class="edit-btn" onclick="openMachineEdit(\''+d.id+'\')">✏️</button></td>'
+      +'<td><button class="edit-btn" onclick="openMachineEdit(this.dataset.id)" data-id="'+d.id+'">✏️</button></td>'
       +'</tr>';
   }).join('');
 }
-function openMachineEdit(id){
-  const machine=_machineData.find(d=>String(d.id)===String(id)); if(!machine)return;
-  window._editingMachine=machine;
-  document.getElementById('emMachineInfo').innerHTML='<strong>'+(machine.serial||'—')+'</strong> · '+(machine.product||'—')+'<br>'+(machine.customerName||'ไม่ระบุลูกค้า');
-  document.getElementById('em_status').value=machine.status||'claimed';
-  document.getElementById('em_newserial').value=machine.newSerial||'';
-  document.getElementById('em_notes').value=machine.notes||'';
-  document.getElementById('editMachineModal').classList.add('open');
-}
-function saveMachineEdit(){
-  const machine=window._editingMachine; if(!machine)return;
-  const status=document.getElementById('em_status').value;
-  const newSerial=document.getElementById('em_newserial').value.trim();
-  const notes=document.getElementById('em_notes').value.trim();
-  const cbName='meCb_'+Date.now(),s=document.createElement('script');
-  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);closeModal('editMachineModal');loadMachines();};
-  s.onerror=function(){delete window[cbName];closeModal('editMachineModal');loadMachines();};
-  s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(machine.id)+'&status='+encodeURIComponent(status)+'&newSerial='+encodeURIComponent(newSerial)+'&notes='+encodeURIComponent(notes)+'&delpw=adminaccessonly&updatedAt='+encodeURIComponent(new Date().toISOString())+'&callback='+cbName+'&t='+Date.now();
+
+function markGlobalSent(id){
+  var machine=_machineData.find(function(d){return String(d.id)===String(id);}); if(!machine)return;
+  if(!confirm('ยืนยันว่าได้ส่งเครื่อง S/N '+machine.serial+' ให้ Global แล้ว?'))return;
+  var changedBy=_currentUser?_currentUser.name:'unknown';
+  var cbName='gsCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);loadMachines();};
+  s.onerror=function(){delete window[cbName];loadMachines();};
+  s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(id)+'&globalStatus=sent&delpw=adminaccessonly&updatedAt='+encodeURIComponent(new Date().toISOString())+'&changedBy='+encodeURIComponent(changedBy)+'&callback='+cbName+'&t='+Date.now();
   document.body.appendChild(s);
 }
+
+function onAssetTypeChange(){
+  var v=document.getElementById('em_assettype').value;
+  document.getElementById('emSubscriptionFields').style.display=v==='subscription'?'block':'none';
+}
+function onAddAssetTypeChange(){
+  var v=document.getElementById('am_assettype').value;
+  document.getElementById('amSubscriptionFields').style.display=v==='subscription'?'block':'none';
+}
+
+function toInputDate(str){
+  if(!str)return '';
+  str=String(str).trim();
+  // DD/MM/YYYY → YYYY-MM-DD
+  var m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  // already YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}/.test(str))return str.slice(0,10);
+  return '';
+}
+
+function openMachineEdit(id){
+  var machine=_machineData.find(function(d){return String(d.id)===String(id);}); if(!machine)return;
+  window._editingMachine=machine;
+  document.getElementById('emMachineInfo').innerHTML='<strong>'+(machine.serial||'—')+'</strong> · '+(machine.product||'—');
+  document.getElementById('em_serial').value=machine.serial||'';
+  renderProductSelectInDiv('em_product_wrap',machine.product||'');
+  document.getElementById('em_assettype').value=machine.assetType||machine.status||'store';
+  document.getElementById('em_subsource').value=machine.subscriptionSource||'';
+  document.getElementById('em_warrantystart').value=toInputDate(machine.warrantyStart||machine.purchaseDate||'');
+  document.getElementById('em_warrantyend').value=toInputDate(machine.warrantyEnd||machine.expiryDate||'');
+  document.getElementById('em_location').value=machine.location||machine.customerName||'';
+  document.getElementById('em_notes').value=machine.notes||'';
+  onAssetTypeChange();
+  document.getElementById('editMachineModal').classList.add('open');
+}
+
+function saveMachineEdit(){
+  var machine=window._editingMachine; if(!machine)return;
+  var serial=(document.getElementById('em_serial').value||'').trim().toUpperCase();
+  if(!serial){alert('กรุณากรอก S/N');return;}
+  var assetType=document.getElementById('em_assettype').value;
+  var emSel=document.getElementById('em_product_wrap_sel');
+  var product=emSel?emSel.value:'';
+  var cbName='meCb_'+Date.now(),s=document.createElement('script');
+  window[cbName]=function(res){delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);closeModal('editMachineModal');loadMachines();};
+  s.onerror=function(){delete window[cbName];closeModal('editMachineModal');loadMachines();};
+  s.src=SHEETS_URL+'?action=updateMachine&id='+encodeURIComponent(machine.id)
+    +'&serial='+encodeURIComponent(serial)
+    +'&product='+encodeURIComponent(product)
+    +'&assetType='+encodeURIComponent(assetType)
+    +'&status='+encodeURIComponent(assetType)
+    +'&subscriptionSource='+encodeURIComponent(document.getElementById('em_subsource').value)
+    +'&warrantyStart='+encodeURIComponent(document.getElementById('em_warrantystart').value)
+    +'&warrantyEnd='+encodeURIComponent(document.getElementById('em_warrantyend').value)
+    +'&customerName='+encodeURIComponent(document.getElementById('em_location').value)
+    +'&notes='+encodeURIComponent(document.getElementById('em_notes').value.trim())
+    +'&delpw=adminaccessonly&updatedAt='+encodeURIComponent(new Date().toISOString())
+    +'&changedBy='+encodeURIComponent(_currentUser?_currentUser.name:'unknown')
+    +'&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+
+function openAddMachineModal(){
+  ['am_serial','am_warrantystart','am_warrantyend','am_location','am_notes'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('am_assettype').value='store';
+  document.getElementById('am_subsource').value='new';
+  renderProductSelectInDiv('am_product_wrap','');
+  onAddAssetTypeChange();
+  document.getElementById('addMachineModal').classList.add('open');
+}
+
+function saveAddMachine(){
+  var serial=(document.getElementById('am_serial').value||'').trim().toUpperCase();
+  if(!serial){alert('กรุณากรอก S/N');return;}
+  var assetType=document.getElementById('am_assettype').value;
+  var amSel=document.getElementById('am_product_wrap_sel');
+  var product=amSel?amSel.value:'';
+  var btn=document.querySelector('#addMachineModal .modal-confirm');
+  if(btn){btn.textContent='⏳ กำลังบันทึก...';btn.disabled=true;}
+  var payload={
+    action:'addMachine',
+    id:String(Date.now()),
+    serial:serial,
+    product:product,
+    assetType:assetType,
+    status:assetType,
+    subscriptionSource:document.getElementById('am_subsource').value,
+    warrantyStart:document.getElementById('am_warrantystart').value,
+    warrantyEnd:document.getElementById('am_warrantyend').value,
+    customerName:document.getElementById('am_location').value.trim(),
+    notes:document.getElementById('am_notes').value.trim(),
+    updatedAt:new Date().toISOString(),
+    source:'manual'
+  };
+  fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
+  .finally(function(){
+    if(btn){btn.textContent='➕ เพิ่ม Asset';btn.disabled=false;}
+    closeModal('addMachineModal');
+    setTimeout(function(){loadMachines();},1000);
+  });
+}
+
 function exportMachineCSV(){
-  const data=_machineData; if(!data.length){alert('ไม่มีข้อมูล');return;}
-  const headers=['#','S/N เดิม','S/N ใหม่','สินค้า','ลูกค้า','สถานะ','หมายเหตุ','วันที่อัปเดต','แหล่งที่มา'];
-  const rows=data.map((d,i)=>[i+1,d.serial,d.newSerial||'',d.product,d.customerName||'',MACHINE_STATUS_LABEL[d.status]||d.status,d.notes||'',d.updatedAt?new Date(d.updatedAt).toLocaleString('th-TH'):'',d.source||'']);
-  dl('\uFEFF'+[headers,...rows].map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n'),`xbloom_machines_${ds()}.csv`,'text/csv;charset=utf-8');
+  var data=_machineData; if(!data.length){alert('ไม่มีข้อมูล');return;}
+  var headers=['#','S/N','สินค้า','ประเภท Asset','แหล่งที่มา (Sub)','ที่ใช้งาน','วันเริ่มประกัน','วันหมดประกัน','% ใช้ไปแล้ว','หมายเหตุ','วันที่อัปเดต'];
+  var rows=data.map(function(d,i){
+    var pct=calcWarrantyPct(d.warrantyStart||d.purchaseDate,d.warrantyEnd||d.expiryDate);
+    return [i+1,d.serial||'',d.product||'',ASSET_TYPE_LABEL[d.assetType||d.status]||d.assetType||'',
+      SUB_SOURCE_LABEL[d.subscriptionSource||'']||'',d.customerName||d.location||'',
+      d.warrantyStart||d.purchaseDate||'',d.warrantyEnd||d.expiryDate||'',
+      pct!==null?pct+'%':'',d.notes||'',
+      d.updatedAt?new Date(d.updatedAt).toLocaleDateString('th-TH'):''];
+  });
+  dl('\uFEFF'+[headers,...rows].map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n'),'xbloom_assets_'+ds()+'.csv','text/csv;charset=utf-8');
+}
+
+// ══ ACTIVITY LOG ══
+let _activityData=[], _activityTextFilter='';
+function loadActivityLog(){
+  document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⏳ กำลังดึงข้อมูล...</div></td></tr>';
+  const cbName='alCb_'+Date.now(),s=document.createElement('script'),done={v:false};
+  const timer=setTimeout(()=>{if(done.v)return;done.v=true;delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⚠ หมดเวลา กรุณาลองใหม่</div></td></tr>';},20000);
+  window[cbName]=function(res){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];if(document.body.contains(s))document.body.removeChild(s);
+    if(res&&res.result==='success'&&Array.isArray(res.data)){_activityData=res.data;renderActivityLog();}
+    else{document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⚠ ดึงข้อมูลไม่สำเร็จ</div></td></tr>';}
+  };
+  s.onerror=function(){if(done.v)return;done.v=true;clearTimeout(timer);delete window[cbName];document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">⚠ เชื่อมต่อไม่สำเร็จ</div></td></tr>';};
+  s.src=SHEETS_URL+'?action=getActivityLog&callback='+cbName+'&t='+Date.now();
+  document.body.appendChild(s);
+}
+function filterActivityLog(q){_activityTextFilter=q.toLowerCase();renderActivityLog();}
+const ACTION_BADGE={'login':'badge-blue','updateTicket':'badge-orange','deleteTicket':'badge-red','update':'badge-orange','delete':'badge-red','deleteall':'badge-red','updateMachine':'badge-orange'};
+function renderActivityLog(){
+  let data=_activityData;
+  if(_activityTextFilter)data=data.filter(d=>(d.userName||'').toLowerCase().includes(_activityTextFilter)||(d.action||'').toLowerCase().includes(_activityTextFilter)||(d.target||'').toLowerCase().includes(_activityTextFilter)||(d.detail||'').toLowerCase().includes(_activityTextFilter));
+  if(!data.length){document.getElementById('activityTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">ไม่มีข้อมูล</div></td></tr>';return;}
+  document.getElementById('activityTableBody').innerHTML=[...data].reverse().slice(0,200).map(d=>{
+    const badgeClass=ACTION_BADGE[d.action]||'badge-gray';
+    const ts=d.timestamp?new Date(d.timestamp).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):'—';
+    return '<tr>'
+      +'<td style="font-size:12px;white-space:nowrap">'+ts+'</td>'
+      +'<td style="font-weight:600">'+(d.userName||'—')+'</td>'
+      +'<td><span class="badge role-'+(d.userRole||'staff')+' user-role-badge">'+(d.userRole||'—')+'</span></td>'
+      +'<td><span class="badge '+badgeClass+'">'+(d.action||'—')+'</span></td>'
+      +'<td style="font-family:monospace;font-size:12px">'+(d.target||'—')+'</td>'
+      +'<td style="font-size:12px;max-width:200px;color:var(--muted)">'+(d.detail||'—')+'</td>'
+      +'</tr>';
+  }).join('');
 }
 
 // ══ UTILITIES ══
@@ -1756,7 +4104,14 @@ function ds(){ const n=new Date(); return n.getFullYear()+''+String(n.getMonth()
 function dl(content,filename,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=filename; a.click(); }
 
 // ══ INIT ══
-window.addEventListener('DOMContentLoaded',()=>{ renderProductSelect('f_product',''); });
+window.addEventListener('DOMContentLoaded',()=>{
+  renderProductSelect('f_product','');
+  // ── Global Report Mode ──
+  var params = new URLSearchParams(window.location.search);
+  if(params.get('mode')==='global' && params.get('token')==='xbloom2026global'){
+    initGlobalReportMode();
+  }
+});
 </script>
 </body>
 </html>
