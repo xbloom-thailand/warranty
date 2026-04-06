@@ -3856,8 +3856,8 @@ function parseDateFlexible(str){
     var y=parseInt(m[3]); if(y<100)y+=2000;
     return new Date(y,parseInt(m[2])-1,parseInt(m[1]));
   }
-  // YYYY-MM-DD
-  var d=new Date(str);
+  // YYYY-MM-DD — บวก T00:00:00 เพื่อ parse เป็น local time (ไม่ใช่ UTC midnight)
+  var d=new Date(str.length===10?str+'T00:00:00':str);
   return isNaN(d.getTime())?null:d;
 }
 
