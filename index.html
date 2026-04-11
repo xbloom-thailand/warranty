@@ -1015,7 +1015,7 @@ tbody tr:hover td { background: var(--s2); }
         <div class="sec-sub">Let's start with the basics.</div>
         <div class="form-field">
           <label class="form-label">Serial number <span class="req">*</span></label>
-          <input class="form-input" id="f_serial" placeholder="J15A01BXXX" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()" style="font-family:'Geist',monospace;letter-spacing:.06em;font-size:18px"/>
+          <input class="form-input" id="f_serial" placeholder="J15A01BXXX" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()"/>
           <div class="err-msg" id="e_serial">Please enter your serial number</div>
           <div style="font-size:12px;color:var(--dim);margin-top:6px">Found on the underside of your machine</div>
         </div>
@@ -2147,7 +2147,7 @@ function renderProductSelect(selectId, selectedVal) {
   var sel = document.getElementById(selectId);
   if (!sel) return;
   var products = loadProducts();
-  sel.innerHTML = '<option value="">— เลือกรุ่นProduct —</option>' +
+  sel.innerHTML = '<option value="">— Select model —</option>' +
     products.map(function(p){ return '<option value="'+p+'"'+(p===selectedVal?' selected':'')+'>'+p+'</option>'; }).join('');
 }
 function renderProductSelectInDiv(divId, selectedVal) {
@@ -2156,7 +2156,7 @@ function renderProductSelectInDiv(divId, selectedVal) {
   var products = loadProducts();
   var uid = divId + '_sel';
   div.innerHTML = '<select id="'+uid+'" style="width:100%;padding:11px 14px;border:1.5px solid var(--s3);border-radius:10px;font-family:Geist,sans-serif;font-size:14px;background:var(--input-bg);appearance:none">'
-    + '<option value="">— เลือกรุ่นProduct —</option>'
+    + '<option value="">— Select model —</option>'
     + products.map(function(p){ return '<option value="'+p+'"'+(p===selectedVal?' selected':'')+'>'+p+'</option>'; }).join('')
     + '</select>';
 }
