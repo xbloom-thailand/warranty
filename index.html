@@ -75,10 +75,7 @@ body {
   height: 32px;
   width: auto;
   display: block;
-  /* Invert white-on-black → black-on-white, then multiply
-     removes any remaining light halo from the PNG background */
   filter: invert(1) contrast(10);
-  mix-blend-mode: multiply;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -88,7 +85,6 @@ body {
   width: auto;
   display: block;
   filter: invert(1) contrast(10);
-  mix-blend-mode: multiply;
   margin: 16px 0 24px;
   opacity: 0.55;
 }
@@ -1966,7 +1962,7 @@ tbody tr:hover td { background: var(--s2); }
       <input type="text" id="em_location" placeholder="e.g. Siam branch / customer name" /></div>
 
     <div class="field"><label>Note</label>
-      <textarea id="em_notes" placeholder="Additional notes…"></textarea></div>
+      <textarea id="em_notes" placeholder="Additional notes…" readonly style="background:var(--s1);color:var(--muted);cursor:default;resize:none"></textarea></div>
 
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editMachineModal')">Cancel</button>
@@ -3527,7 +3523,26 @@ const WARRANTY_FLOW_CASE1 = [
   { status:'Verify warranty', icon:'📋', label:'Verify warranty',
     desc:'Confirm machine is in warranty and issue is covered',
     isBranch:false, nextLabel:'Guide customer →', nextStatus:'Guide customer',
-    renderFields:function(){ return '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;margin-bottom:6px;opacity:.4">○</div><div style="font-size:14px;font-weight:500;color:#856404">Verify warranty</div><div style="font-size:12px;color:#a07800;margin-top:4px">Confirm machine is in warranty</div></div>'; },
+    renderFields:function(ticket){
+      var info = '<div style="background:#f0f4ff;border:1.5px solid #c7d7fd;border-radius:12px;padding:14px;margin-bottom:14px">'
+        + '<div style="font-size:11px;font-weight:500;color:#4A7A9B;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">📋 Customer information</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">S/N unit(s)</div><div style="font-size:14px;font-weight:500;font-family:monospace">'+(ticket&&ticket.serial?escHtml(ticket.serial):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Customer</div><div style="font-size:14px;font-weight:500">'+(ticket&&ticket.name?escHtml(ticket.name):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Phone</div><div style="font-size:14px">'+(ticket&&ticket.phone?escHtml(ticket.phone):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Line ID</div><div style="font-size:14px">'+(ticket&&ticket.lineId?escHtml(ticket.lineId):'—')+'</div></div>'
+        + '</div>'
+        + '<div style="background:#fef9c3;border-radius:8px;padding:10px;margin-bottom:8px">'
+        + '<div style="font-size:10px;color:#92400e;margin-bottom:4px">⚠ Issue type</div>'
+        + '<div style="font-size:15px;font-weight:500;color:#78350f">'+(ticket&&ticket.issueType?escHtml(ticket.issueType):'—')+'</div>'
+        + '</div>'
+        + (ticket&&ticket.description?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">📝 Description</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+escHtml(ticket.description)+'</div></div>':'')
+        + (ticket&&ticket.logUrl?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>📋</span><a href="'+encodeURI(ticket.logUrl)+'" target="_blank" rel="noopener" style="font-size:13px;color:var(--blue)">Machine Log</a></div>':'')
+        + (ticket&&(ticket.videoFilename||ticket.videoUrl)?'<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+(ticket.videoUrl||DRIVE_VIDEO_URL)+'" target="_blank" style="font-size:13px;color:var(--blue)">'+(ticket.videoFilename||'Watch video')+'</a></div>':'')
+        + '</div>';
+      var verify = '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:18px;text-align:center"><div style="font-size:26px;margin-bottom:6px;opacity:.4">○</div><div style="font-size:14px;font-weight:500;color:#856404">Verify warranty</div><div style="font-size:12px;color:#a07800;margin-top:4px">Confirm machine is in warranty</div></div>';
+      return info + verify;
+    },
     validate:function(){ return null; }
   },
   { status:'Guide customer', icon:'💬', label:'Guide customer',
@@ -3564,7 +3579,26 @@ const WARRANTY_FLOW_CASE2 = [
   { status:'Verify warranty', icon:'📋', label:'Verify warranty',
     desc:'Confirm machine is in warranty and issue is covered',
     isBranch:false, nextLabel:'Guide customer →', nextStatus:'Guide customer',
-    renderFields:function(){ return '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:20px;text-align:center"><div style="font-size:28px;margin-bottom:6px;opacity:.4">○</div><div style="font-size:14px;font-weight:500;color:#856404">Verify warranty</div><div style="font-size:12px;color:#a07800;margin-top:4px">Confirm machine is in warranty</div></div>'; },
+    renderFields:function(ticket){
+      var info = '<div style="background:#f0f4ff;border:1.5px solid #c7d7fd;border-radius:12px;padding:14px;margin-bottom:14px">'
+        + '<div style="font-size:11px;font-weight:500;color:#4A7A9B;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">📋 Customer information</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">S/N unit(s)</div><div style="font-size:14px;font-weight:500;font-family:monospace">'+(ticket&&ticket.serial?escHtml(ticket.serial):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Customer</div><div style="font-size:14px;font-weight:500">'+(ticket&&ticket.name?escHtml(ticket.name):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Phone</div><div style="font-size:14px">'+(ticket&&ticket.phone?escHtml(ticket.phone):'—')+'</div></div>'
+        + '<div style="background:#fff;border-radius:8px;padding:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:3px">Line ID</div><div style="font-size:14px">'+(ticket&&ticket.lineId?escHtml(ticket.lineId):'—')+'</div></div>'
+        + '</div>'
+        + '<div style="background:#fef9c3;border-radius:8px;padding:10px;margin-bottom:8px">'
+        + '<div style="font-size:10px;color:#92400e;margin-bottom:4px">⚠ Issue type</div>'
+        + '<div style="font-size:15px;font-weight:500;color:#78350f">'+(ticket&&ticket.issueType?escHtml(ticket.issueType):'—')+'</div>'
+        + '</div>'
+        + (ticket&&ticket.description?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px">📝 Description</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+escHtml(ticket.description)+'</div></div>':'')
+        + (ticket&&ticket.logUrl?'<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>📋</span><a href="'+encodeURI(ticket.logUrl)+'" target="_blank" rel="noopener" style="font-size:13px;color:var(--blue)">Machine Log</a></div>':'')
+        + (ticket&&(ticket.videoFilename||ticket.videoUrl)?'<div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px"><span>🎥</span><a href="'+(ticket.videoUrl||DRIVE_VIDEO_URL)+'" target="_blank" style="font-size:13px;color:var(--blue)">'+(ticket.videoFilename||'Watch video')+'</a></div>':'')
+        + '</div>';
+      var verify = '<div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:18px;text-align:center"><div style="font-size:26px;margin-bottom:6px;opacity:.4">○</div><div style="font-size:14px;font-weight:500;color:#856404">Verify warranty</div><div style="font-size:12px;color:#a07800;margin-top:4px">Confirm machine is in warranty</div></div>';
+      return info + verify;
+    },
     validate:function(){ return null; }
   },
   { status:'Guide customer', icon:'💬', label:'Guide customer',
@@ -3603,7 +3637,7 @@ const WARRANTY_FLOW_CASE2 = [
         +'<option value="">— Select method —</option>'
         +'<option>Kerry Express</option><option>Flash Express</option><option>J&T Express</option>'
         +'<option>Thailand Post (EMS)</option><option>DHL</option>'
-        +'<option>Delivered by customer</option><option>Received directly by staff</option><option>Other</option>'
+        +'<option>Delivered by customer</option><option>xBloom CTW Store</option><option>Received directly by staff</option><option>Other</option>'
         +'</select></div>'
         +'</div>';
     },
@@ -3962,7 +3996,7 @@ const REPAIR_CLAIM_FLOW = [
   },
   // ── Step 5: Admin closes ──
   {
-    status: 'Pending close', icon: '🏁', label: 'Closed',
+    status: 'Pending close', icon: '🏁', label: 'Review & close',
     by: 'admin', desc: 'Admin reviews and closes the ticket',
     nextLabel: '🏁 Closed', nextStatus: 'Closed',
     renderFields: function(ticket) {
@@ -5088,10 +5122,30 @@ function renderMachines(){
 function onAssetTypeChange(){
   var v=document.getElementById('em_assettype').value;
   document.getElementById('emSubscriptionFields').style.display=v==='subscription'?'block':'none';
+  // Auto-tick No warranty when claim_fixed is selected
+  var nowarEl=document.getElementById('em_nowarranty');
+  if(nowarEl && v==='claim_fixed'){
+    nowarEl.checked=true;
+    document.getElementById('em_warrantystart').disabled=true;
+    document.getElementById('em_warrantyend').disabled=true;
+  } else if(nowarEl && v!=='claim_fixed' && v!=='subscription'){
+    // only reset if currently forced by claim_fixed — don't touch if user manually set
+  }
 }
 function onAddAssetTypeChange(){
   var v=document.getElementById('am_assettype').value;
   document.getElementById('amSubscriptionFields').style.display=v==='subscription'?'block':'none';
+  // Auto-tick No warranty for claim_fixed
+  var nowarEl=document.getElementById('am_nowarranty');
+  if(nowarEl && v==='claim_fixed'){
+    nowarEl.checked=true;
+    document.getElementById('am_warrantystart').disabled=true;
+    document.getElementById('am_warrantyend').disabled=true;
+  } else if(nowarEl && v!=='claim_fixed'){
+    nowarEl.checked=false;
+    document.getElementById('am_warrantystart').disabled=false;
+    document.getElementById('am_warrantyend').disabled=false;
+  }
 }
 
 function nowTH(){
@@ -5123,14 +5177,14 @@ function openMachineEdit(id){
   document.getElementById('em_subsource').value=machine.subscriptionSource||'';
   document.getElementById('em_warrantystart').value=toInputDate(machine.warrantyStart||machine.purchaseDate||'');
   document.getElementById('em_warrantyend').value=toInputDate(machine.warrantyEnd||machine.expiryDate||'');
-  var noWar=machine.noWarranty==='1'||machine.noWarranty===true||machine.noWarranty==='true';
-  // ถ้าไม่มี field noWarranty แต่ไม่มีวันประกัน (เคสเก่า) ให้ auto-tick
-  if(!noWar && !machine.warrantyStart && !machine.purchaseDate && (machine.assetType==='claim_fixed' || machine.subscriptionSource==='from_claim')){
-    // ไม่ auto-tick เพื่อไม่รบกวน record ที่ยังไม่ได้ใส่วัน
-  }
-  document.getElementById('em_nowarranty').checked=noWar;
-  document.getElementById('em_warrantystart').disabled=noWar;
-  document.getElementById('em_warrantyend').disabled=noWar;
+  // Determine noWarranty: explicit flag OR claim_fixed asset type
+  var resolvedAssetType = document.getElementById('em_assettype').value;
+  var noWar = machine.noWarranty==='1' || machine.noWarranty===true || machine.noWarranty==='true'
+    || resolvedAssetType==='claim_fixed'
+    || machine.subscriptionSource==='from_claim';
+  document.getElementById('em_nowarranty').checked = noWar;
+  document.getElementById('em_warrantystart').disabled = noWar;
+  document.getElementById('em_warrantyend').disabled = noWar;
   document.getElementById('em_location').value=machine.location||machine.customerName||'';
   document.getElementById('em_notes').value=machine.notes||'';
   onAssetTypeChange();
