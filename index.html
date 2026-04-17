@@ -38,7 +38,10 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ─── Body ──────────────────────────────────────────── */
+/* ─── Root & Body ───────────────────────────────────── */
+html {
+  background: #FFFFFF; /* fills status bar + overscroll bounce on iPhone */
+}
 body {
   background: #FFFFFF;
   min-height: 100vh;
