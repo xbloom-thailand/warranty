@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#FFFFFF">
 <title>xBloom Thailand</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,6 +12,7 @@
 <style>
 /* ─── Design Tokens ─────────────────────────────────── */
 :root {
+  color-scheme: light;
   --bg:     #FFFFFF;
   --s1:     #F7F6F4;
   --s2:     #EEECEA;
@@ -40,10 +43,12 @@
 
 /* ─── Root & Body ───────────────────────────────────── */
 html {
-  background: #FFFFFF; /* fills status bar + overscroll bounce on iPhone */
+  background: #FFFFFF;
+  overscroll-behavior: none;
 }
 body {
   background: #FFFFFF;
+  overscroll-behavior: none;
   min-height: 100vh;
   display: flex;
   align-items: flex-start;
